@@ -1,0 +1,9 @@
+{
+    "devDependencies": {
+        "@types/node": "^16.11.1"
+    },
+
+    "scripts": {
+        "gen": "tsc -p tsconfig.boot.json && node built/bootstrap/main.js resources/grammar.g > src/gen/parser.ts"
+    }
+}

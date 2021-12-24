@@ -1,0 +1,9 @@
+{
+    "extends": "./tsconfig.json",
+
+    "include": [],
+
+    "files": [
+        "src/bootstrap/main.ts"
+    ]
+}
