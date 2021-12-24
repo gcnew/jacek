@@ -234,6 +234,83 @@ type $Either<L, R> = { kind: 'left',  value: L }
 type $NoMatch<T> = { kind: 'no_match', expected: T, idx: number }
 
 type $Match<T> = $Either<$NoMatch<string | RegExp>, readonly [number, T]>
+
+export function getLineCol(offset: number, lineOffsetTable: [number, string][]): [number, number]|null {
+    let idx = binarySearch(lineOffsetTable, x => x[0] < offset ? -1 :
+                                                 x[0] > offset ?  1 : 0);
+
+    if (idx === false) {
+        return null;
+    }
+    if (idx < 0) {
+        idx = -idx - 1;
+    }
+
+    return [idx, offset - lineOffsetTable[idx][0]];
+}
+
+export function parseLineOffsets(source: string): [number, string][] {
+    const lines = source.split('\\n');
+
+    let acc = [];
+    let offset = 0;
+    for (const l of lines) {
+        acc.push([ offset, l ] as [number, string]);
+        offset += l.length + 1;
+    }
+
+    return acc;
+}
+
+function binarySearch<T>(arr: T[], compare: (x: T) => -1|0|1): false|number {
+    let low = 0;
+    let high = arr.length - 1;
+
+    if (!arr.length) {
+        return false;
+    }
+
+    while (low <= high) {
+        const m = low + ((high - low) >> 1);
+        const cmp = compare(arr[m]);
+
+        if (cmp < 0) {
+            low = m + 1;
+            continue;
+        }
+        if (cmp > 0) {
+            high = m - 1;
+            continue;
+        }
+
+        return m;
+    }
+
+    return -low;
+}
+
+export function formatSimpleError(error: $NoMatch<string|RegExp>, lineOffsets: [number, string][], fileName?: string) {
+    const [ lineNo, col ] = getLineCol(error.idx, lineOffsets)!;
+    const line = lineOffsets[lineNo][1];
+
+    return [
+        line,
+        ' '.repeat(col) + '^',
+        \`\${fileName ? fileName + ': ' : ''}\${lineNo+1}:\${col+1}: Expected \${error.expected}\`
+    ].join('\\n');
+}
+
+export function parse<T>(grammar: (input: string, start: number) => $Match<T>, source: string, fileName?: string): $Either<string, T> {
+    const result = grammar(source, 0);
+    if (result.kind === 'left') {
+        const lineOffsets = parseLineOffsets(source);
+        const error = formatSimpleError(result.value, lineOffsets, fileName);
+
+        return { kind: 'left', value: error };
+    }
+
+    return { kind: 'right', value: result.value[1] };
+}
 `;
 
 

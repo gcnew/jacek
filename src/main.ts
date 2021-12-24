@@ -1,6 +1,6 @@
 
 import * as fs from 'fs';
-import { grammar } from './gen/parser'
+import { parse, grammar } from './gen/parser'
 
 function main() {
     const [node, self, grammarFile] = process.argv;
@@ -9,10 +9,16 @@ function main() {
         process.exit(1);
     }
 
-    const contents = fs.readFileSync(grammarFile, 'utf-8');
-    const parsed = grammar(contents, 0);
+    const source = fs.readFileSync(grammarFile, 'utf-8');
+    const parsed = parse(grammar, source, grammarFile);
 
-    console.log(JSON.stringify(parsed, null, 4));
+    if (parsed.kind === 'left') {
+        console.log(parsed.value);
+        process.exit(1);
+    }
+
+    console.log('Win!');
 }
+
 
 main();
