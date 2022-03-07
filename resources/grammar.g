@@ -1,6 +1,8 @@
 
 %{
 
+export type Modifier      = '*' | '+' | '?'
+
 export type SimplePattern = Literal | Regexp | Any | Not | Id
 
 export type Any     = { kind: 'any',     start: number, end: number }
@@ -8,9 +10,9 @@ export type Id      = { kind: 'id',      start: number, end: number, text: strin
 export type Literal = { kind: 'literal', start: number, end: number, text: string }
 export type Regexp  = { kind: 'regexp',  start: number, end: number, text: string }
 export type Text    = { kind: 'text',    start: number, end: number, text: string }
-export type Not     = { kind: 'not',     start: number, end: number, pattern: SimplePattern }
+export type Not     = { kind: 'not',     start: number, end: number, pattern: Literal | Regexp | Id }
 
-export type Rep     = { kind: 'rep',     pattern: SimplePattern, modifier?: '*' | '+' | '?' }
+export type Rep     = { kind: 'rep',     pattern: SimplePattern, modifier?: Modifier }
 
 export type Pattern = { kind: 'pattern', seq: Rep[], mapper?: Text }
 
@@ -39,11 +41,11 @@ function mkText(start: number, end: number, text: string): Text {
     return { kind: 'text', start, end, text };
 }
 
-function mkNot(start: number, end: number, pattern: SimplePattern): Not {
+function mkNot(start: number, end: number, pattern: Literal | Regexp | Id): Not {
     return { kind: 'not', start, end, pattern };
 }
 
-function mkRep(pattern: SimplePattern, modifier: '*' | '+' | '?' | undefined): Rep {
+function mkRep(pattern: SimplePattern, modifier?: Modifier): Rep {
     return { kind: 'rep', pattern, modifier };
 }
 
@@ -89,13 +91,18 @@ regexPart = '\\/'
 regex = '/' regexPart* '/' 'i'? 's'?        %% mkRegexp(start, end, text())
       ;
 
-not = 'not(' simplePattern ')'              %% mkNot(start, end, $1)
+notPattern = literal
+           | regex
+           | id
+           ;
+
+not = 'not(' ws notPattern ws ')'           %% mkNot(start, end, $2)
     ;
 
 any = '.'                                   %% mkAny(start, end)
     ;
 
-simplePattern: SimplePattern
+simplePattern
     = literal
     | regex
     | any
@@ -114,7 +121,7 @@ rep = simplePattern repModifier?                    %% mkRep($0, $1)
 seq = rep ws                                        %% $0
     ;
 
-mapperText = not('\n')*                             %% mkText(start, end, text().trim())
+mapperText = not('\n')*                             %% mkText(start, end, text())
            ;
 
 lookMapper = '\%\%' mapperText                      %% $1

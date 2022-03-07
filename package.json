@@ -1,9 +1,15 @@
 {
     "devDependencies": {
-        "@types/node": "^16.11.1"
+        "@types/node": "^16.11.1",
+        "pietr": "gcnew/pietr"
     },
 
     "scripts": {
-        "gen": "tsc -p tsconfig.boot.json && node built/bootstrap/main.js resources/grammar.g > src/gen/parser.ts"
+        "gen": "tsc -p tsconfig.boot.json && node built/bootstrap/main.js resources/grammar.g > src/gen/parser.ts",
+
+        "test:gen": "node built/bootstrap/main.js test/suite.g > test/gen/boostrap.ts",
+        "test:compile": "tsc -p tsconfig.test.json",
+        "test:run": "pietr --pattern='test/**/*.js'",
+        "test": "npm run gen && npm run test:gen && npm run test:compile && npm run test:run"
     }
 }

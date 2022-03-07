@@ -87,6 +87,8 @@ export function parse<T>(grammar: (input: string, start: number) => $Match<T>, s
     return { kind: 'right', value: result.value[1] };
 }
 
+export type Modifier      = '*' | '+' | '?'
+
 export type SimplePattern = Literal | Regexp | Any | Not | Id
 
 export type Any     = { kind: 'any',     start: number, end: number }
@@ -94,9 +96,9 @@ export type Id      = { kind: 'id',      start: number, end: number, text: strin
 export type Literal = { kind: 'literal', start: number, end: number, text: string }
 export type Regexp  = { kind: 'regexp',  start: number, end: number, text: string }
 export type Text    = { kind: 'text',    start: number, end: number, text: string }
-export type Not     = { kind: 'not',     start: number, end: number, pattern: SimplePattern }
+export type Not     = { kind: 'not',     start: number, end: number, pattern: Literal | Regexp | Id }
 
-export type Rep     = { kind: 'rep',     pattern: SimplePattern, modifier?: '*' | '+' | '?' }
+export type Rep     = { kind: 'rep',     pattern: SimplePattern, modifier?: Modifier }
 
 export type Pattern = { kind: 'pattern', seq: Rep[], mapper?: Text }
 
@@ -125,11 +127,11 @@ function mkText(start: number, end: number, text: string): Text {
     return { kind: 'text', start, end, text };
 }
 
-function mkNot(start: number, end: number, pattern: SimplePattern): Not {
+function mkNot(start: number, end: number, pattern: Literal | Regexp | Id): Not {
     return { kind: 'not', start, end, pattern };
 }
 
-function mkRep(pattern: SimplePattern, modifier: '*' | '+' | '?' | undefined): Rep {
+function mkRep(pattern: SimplePattern, modifier?: Modifier): Rep {
     return { kind: 'rep', pattern, modifier };
 }
 
@@ -294,7 +296,7 @@ export function literal(input: string, start: number) {
         end = $end1;
         return { kind: 'right', value: $1 } as const;
     };
-    let $1 = [];
+    let $1: Extract<ReturnType<typeof $cc1>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
@@ -406,7 +408,7 @@ export function regex(input: string, start: number) {
         end = $end1;
         return { kind: 'right', value: $1 } as const;
     };
-    let $1 = [];
+    let $1: Extract<ReturnType<typeof $cc1>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
@@ -474,6 +476,82 @@ export function regex(input: string, start: number) {
 }
 
 
+export function notPattern(input: string, start: number) {
+    
+    let end = start;
+    
+    const $cc0 = (input: string, start: number) => {
+        
+        let end = start;
+
+        
+        const $tmp$0 = literal(input, end);
+        if ($tmp$0.kind === 'left') {
+            return $tmp$0;
+        }
+        const [$end0, $0] = $tmp$0.value;
+        end = $end0;
+
+        const text = () => input.substring(start, end);
+        return { kind: 'right', value: [ end, $0 ] } as const;
+    };
+    const $tmp$0 = $cc0(input, start);
+    if ($tmp$0.kind === 'right') {
+        return $tmp$0;
+    }
+    if ($tmp$0.kind === 'left' && !($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+        return $tmp$0;
+    }
+
+    const $cc1 = (input: string, start: number) => {
+        
+        let end = start;
+
+        
+        const $tmp$0 = regex(input, end);
+        if ($tmp$0.kind === 'left') {
+            return $tmp$0;
+        }
+        const [$end0, $0] = $tmp$0.value;
+        end = $end0;
+
+        const text = () => input.substring(start, end);
+        return { kind: 'right', value: [ end, $0 ] } as const;
+    };
+    const $tmp$1 = $cc1(input, start);
+    if ($tmp$1.kind === 'right') {
+        return $tmp$1;
+    }
+    if ($tmp$1.kind === 'left' && !($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+        return $tmp$1;
+    }
+
+    const $cc2 = (input: string, start: number) => {
+        
+        let end = start;
+
+        
+        const $tmp$0 = id(input, end);
+        if ($tmp$0.kind === 'left') {
+            return $tmp$0;
+        }
+        const [$end0, $0] = $tmp$0.value;
+        end = $end0;
+
+        const text = () => input.substring(start, end);
+        return { kind: 'right', value: [ end, $0 ] } as const;
+    };
+    const $tmp$2 = $cc2(input, start);
+    if ($tmp$2.kind === 'right') {
+        return $tmp$2;
+    }
+    if ($tmp$2.kind === 'left' && !($tmp$2.value.kind === 'no_match' && $tmp$2.value.idx === end)) {
+        return $tmp$2;
+    }
+    return $tmp$2;
+}
+
+
 export function not(input: string, start: number) {
     
     let end = start;
@@ -486,22 +564,36 @@ export function not(input: string, start: number) {
 
     end += $0.length;
 
-    const $tmp$1 = simplePattern(input, end);
+    const $tmp$1 = ws(input, end);
     if ($tmp$1.kind === 'left') {
         return $tmp$1;
     }
     const [$end1, $1] = $tmp$1.value;
     end = $end1;
 
-    const $2 = ')';
-    if (!input.startsWith($2, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $2, idx: end } } as const;
+    const $tmp$2 = notPattern(input, end);
+    if ($tmp$2.kind === 'left') {
+        return $tmp$2;
+    }
+    const [$end2, $2] = $tmp$2.value;
+    end = $end2;
+
+    const $tmp$3 = ws(input, end);
+    if ($tmp$3.kind === 'left') {
+        return $tmp$3;
+    }
+    const [$end3, $3] = $tmp$3.value;
+    end = $end3;
+
+    const $4 = ')';
+    if (!input.startsWith($4, end)) {
+        return { kind: 'left', value: { kind: 'no_match', expected: $4, idx: end } } as const;
     }
 
-    end += $2.length;
+    end += $4.length;
 
     const text = () => input.substring(start, end);
-    return { kind: 'right', value: [ end, mkNot(start, end, $1) ] } as const;
+    return { kind: 'right', value: [ end, mkNot(start, end, $2) ] } as const;
 }
 
 
@@ -522,7 +614,7 @@ export function any(input: string, start: number) {
 }
 
 
-export function simplePattern(input: string, start: number): $Match<SimplePattern> {
+export function simplePattern(input: string, start: number) {
     
     let end = start;
     
@@ -811,7 +903,7 @@ export function mapperText(input: string, start: number) {
         end++;
         return { kind: 'right', value: $0 } as const;
     };
-    let $0 = [];
+    let $0: Extract<ReturnType<typeof $cc0>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$0 = $cc0(input, end);
         if ($tmp$0.kind === 'left') {
@@ -824,7 +916,7 @@ export function mapperText(input: string, start: number) {
     }
 
     const text = () => input.substring(start, end);
-    return { kind: 'right', value: [ end, mkText(start, end, text().trim()) ] } as const;
+    return { kind: 'right', value: [ end, mkText(start, end, text()) ] } as const;
 }
 
 
@@ -972,7 +1064,7 @@ export function alternatives(input: string, start: number) {
         end = $end1;
         return { kind: 'right', value: $1 } as const;
     };
-    let $1 = [];
+    let $1: Extract<ReturnType<typeof $cc1>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
@@ -1129,7 +1221,7 @@ export function pastaText(input: string, start: number) {
         end++;
         return { kind: 'right', value: $0 } as const;
     };
-    let $0 = [];
+    let $0: Extract<ReturnType<typeof $cc0>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$0 = $cc0(input, end);
         if ($tmp$0.kind === 'left') {
@@ -1226,7 +1318,7 @@ export function grammar(input: string, start: number) {
         end = $end1;
         return { kind: 'right', value: $1 } as const;
     };
-    let $1 = [];
+    let $1: Extract<ReturnType<typeof $cc1>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
@@ -1249,7 +1341,7 @@ export function grammar(input: string, start: number) {
         end = $end2;
         return { kind: 'right', value: $2 } as const;
     };
-    let $2 = [];
+    let $2: Extract<ReturnType<typeof $cc2>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$2 = $cc2(input, end);
         if ($tmp$2.kind === 'left') {
