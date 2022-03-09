@@ -89,19 +89,24 @@ regexPart = '\\/'
 regex = '/' regexPart* '/' 'i'? 's'?        %% mkRegexp(start, end, text())
       ;
 
-not = 'not(' simplePattern ')'              %% mkNot(start, end, $1)
+notPattern = literal
+           | regex
+           | any
+           | id
+           ;
+
+not = 'not(' notPattern ')'                 %% mkNot(start, end, $1)
     ;
 
 any = '.'                                   %% mkAny(start, end)
     ;
 
-simplePattern: SimplePattern
-    = literal
-    | regex
-    | any
-    | not
-    | id
-    ;
+simplePattern = literal
+              | regex
+              | any
+              | not
+              | id
+              ;
 
 repModifier = '?'
             | '*'
@@ -109,7 +114,7 @@ repModifier = '?'
             ;
 
 rep = simplePattern repModifier?                    %% mkRep($0, $1)
-           ;
+    ;
 
 seq = rep ws                                        %% $0
     ;

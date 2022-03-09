@@ -474,6 +474,105 @@ export function regex(input: string, start: number) {
 }
 
 
+export function notPattern(input: string, start: number) {
+    
+    let end = start;
+    
+    const $cc0 = (input: string, start: number) => {
+        
+        let end = start;
+
+        
+        const $tmp$0 = literal(input, end);
+        if ($tmp$0.kind === 'left') {
+            return $tmp$0;
+        }
+        const [$end0, $0] = $tmp$0.value;
+        end = $end0;
+
+        const text = () => input.substring(start, end);
+        return { kind: 'right', value: [ end, $0 ] } as const;
+    };
+    const $tmp$0 = $cc0(input, start);
+    if ($tmp$0.kind === 'right') {
+        return $tmp$0;
+    }
+    if ($tmp$0.kind === 'left' && !($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+        return $tmp$0;
+    }
+
+    const $cc1 = (input: string, start: number) => {
+        
+        let end = start;
+
+        
+        const $tmp$0 = regex(input, end);
+        if ($tmp$0.kind === 'left') {
+            return $tmp$0;
+        }
+        const [$end0, $0] = $tmp$0.value;
+        end = $end0;
+
+        const text = () => input.substring(start, end);
+        return { kind: 'right', value: [ end, $0 ] } as const;
+    };
+    const $tmp$1 = $cc1(input, start);
+    if ($tmp$1.kind === 'right') {
+        return $tmp$1;
+    }
+    if ($tmp$1.kind === 'left' && !($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+        return $tmp$1;
+    }
+
+    const $cc2 = (input: string, start: number) => {
+        
+        let end = start;
+
+        
+        const $tmp$0 = any(input, end);
+        if ($tmp$0.kind === 'left') {
+            return $tmp$0;
+        }
+        const [$end0, $0] = $tmp$0.value;
+        end = $end0;
+
+        const text = () => input.substring(start, end);
+        return { kind: 'right', value: [ end, $0 ] } as const;
+    };
+    const $tmp$2 = $cc2(input, start);
+    if ($tmp$2.kind === 'right') {
+        return $tmp$2;
+    }
+    if ($tmp$2.kind === 'left' && !($tmp$2.value.kind === 'no_match' && $tmp$2.value.idx === end)) {
+        return $tmp$2;
+    }
+
+    const $cc3 = (input: string, start: number) => {
+        
+        let end = start;
+
+        
+        const $tmp$0 = id(input, end);
+        if ($tmp$0.kind === 'left') {
+            return $tmp$0;
+        }
+        const [$end0, $0] = $tmp$0.value;
+        end = $end0;
+
+        const text = () => input.substring(start, end);
+        return { kind: 'right', value: [ end, $0 ] } as const;
+    };
+    const $tmp$3 = $cc3(input, start);
+    if ($tmp$3.kind === 'right') {
+        return $tmp$3;
+    }
+    if ($tmp$3.kind === 'left' && !($tmp$3.value.kind === 'no_match' && $tmp$3.value.idx === end)) {
+        return $tmp$3;
+    }
+    return $tmp$3;
+}
+
+
 export function not(input: string, start: number) {
     
     let end = start;
@@ -486,7 +585,7 @@ export function not(input: string, start: number) {
 
     end += $0.length;
 
-    const $tmp$1 = simplePattern(input, end);
+    const $tmp$1 = notPattern(input, end);
     if ($tmp$1.kind === 'left') {
         return $tmp$1;
     }
@@ -522,7 +621,7 @@ export function any(input: string, start: number) {
 }
 
 
-export function simplePattern(input: string, start: number): $Match<SimplePattern> {
+export function simplePattern(input: string, start: number) {
     
     let end = start;
     
