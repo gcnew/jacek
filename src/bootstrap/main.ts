@@ -54,6 +54,10 @@ function compileLiteral(literal: string, idx: number) {
     end += $${idx}.length;`
 }
 
+function compileLexLiteral(literal: string, idx: number) {
+
+}
+
 function compileRuleInvokation(rule: string, idx: number) {
     return `
     const ${tmp(idx)} = ${rule}(input, end);
@@ -96,6 +100,10 @@ function compileSimple(pattern: string, idx: number) {
 
     if (pattern[0] === '\'') {
         return compileLiteral(pattern, idx);
+    }
+
+    if (pattern[0] === '`') {
+        return compileLexLiteral(pattern, idx);
     }
 
     if (pattern === '.') {
@@ -194,7 +202,7 @@ function compileAlternative(alt: string) {
 }
 
 function compileRule(rule: string) {
-    const [_0, name, _1, type, ruleBody] = /^(\w+)(:\s*(\w+))?\s*= *(.*)$/s.exec(rule)!;
+    const [_0, name, _1, type, ruleBody] = /^(`\w+`|\w+)(:\s*(\w+))?\s*= *(.*)$/s.exec(rule)!;
 
     const alternatives = ruleBody.split(/\s+\|\s+/)
         .map(compileAlternative);
@@ -219,6 +227,12 @@ function compileRule(rule: string) {
     let end = start;
     ${ccs.join('\n')}
     return ${tmp(alternatives.length - 1)};`
+    }
+
+    if (name[0] == '`') {
+        return `
+function
+`;
     }
 
     return `

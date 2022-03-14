@@ -66,39 +66,46 @@ function mkGrammar(pasta: Pasta[], rules: Rule[]): Grammar {
 
 }%
 
+`lit` = lit ws                              %% { text: $0, start, end: start + $0.length }
+      ;
+
 ws = /\s*/
    ;
 
-ws1 = /\s+/
-    ;
-
-id = /[a-zA-Z][a-zA-Z0-9]*/                 %% mkId(start, end, $0)
+id = /[_a-zA-Z][_a-zA-Z0-9]*/ ws            %% mkId(start, start + $0.length, $0)
    ;
 
 literalPart = '\\\''                        %% '\''
             | not('\'')
             ;
 
-literal = '\'' literalPart* '\''            %% mkLiteral(start, end, $1.join(''))
+literal = '\'' literalPart* `\'`            %% mkLiteral(start, $2.end, $1.join(''))
         ;
 
-regexPart = '\\/'
-          | not('/')
-          ;
+rxPart = '\\/'
+       | not('/')
+       ;
 
-regex = '/' regexPart* '/' 'i'? 's'?        %% mkRegexp(start, end, text())
-      ;
-
-notPattern = literal
-           | regex
-           | any
-           | id
+rxModifier = 'i'
+           | 's'
            ;
 
-not = 'not(' notPattern ')'                 %% mkNot(start, end, $1)
+regex = '/' rxPart* '/' rxModifier* ws      %% mkRegexp(start, end - $4.length, text().slice(0, -$4.length))
+       ;
+
+macroPattern = literal
+             | regex
+             | any
+             | id
+             ;
+
+not = `not` `(` macroPattern `)`            %% mkNot(start, $3.end, $2)
     ;
 
-any = '.'                                   %% mkAny(start, end)
+look = `look` `(` macroPattern `)`          %% mkLook(start, $3.end, $2)
+     ;
+
+any = `.`                                   %% mkAny(start, $1.end)
     ;
 
 simplePattern = literal
@@ -108,9 +115,9 @@ simplePattern = literal
               | id
               ;
 
-repModifier = '?'
-            | '*'
-            | '+'
+repModifier = `?`
+            | `*`
+            | `+`
             ;
 
 rep = simplePattern repModifier?                    %% mkRep($0, $1)
@@ -126,18 +133,15 @@ lookMapper = '\%\%' mapperText                      %% $1
            ;
 
 pattern = seq+ lookMapper? ws                       %% mkPattern($0, $1)
-           ;
+        ;
 
-alternationLook = '|' ws pattern                    %% $2
-                ;
-
-alternatives = pattern alternationLook*             %% [ $0, ...$1 ]
+alternatives = pattern (`|` !pattern)*              %% [ $0, ...$1 ]
             ;
 
-type = ':' ws id                                    %% $2
+type = `:` id                                       %% $1
      ;
 
-rule = id type? ws '=' ws alternatives ';' ws       %% mkRule($0, $1, $5 as $StripReadonly<typeof $5>)
+rule = id type? `=` alternatives `;`                %% mkRule($0, $1, $5 as $StripReadonly<typeof $5>)
      ;
 
 pastaText = not('}%')*                              %% mkText(start, end, text())

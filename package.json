@@ -17,7 +17,7 @@
     },
 
     "files": [
-        "lib", "bin"
+        "bin"
     ],
 
     "bin": "./bin/jacek",
