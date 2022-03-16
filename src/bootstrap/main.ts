@@ -2,16 +2,28 @@
 
 import * as fs from 'fs';
 
+type Expando<V> = {
+    [key: string]: V
+}
+
+type Scope = Expando<boolean>
+
+type Options = {
+    noPrelude: boolean
+}
 
 function main() {
-    const [node, self, grammarFile] = process.argv;
+    const noPrelude = process.argv.includes('--no-prelude');
+    const [node, self, grammarFile] = process.argv
+        .filter(x => x !== '--no-prelude');
+
     if (!grammarFile) {
-        console.log('syntax: bootstrap <grammar-file>');
+        console.log('syntax: bootstrap <grammar-file> [--no-prelude]');
         process.exit(1);
     }
 
     const contents = fs.readFileSync(grammarFile, 'utf-8');
-    const result = compileGrammar(contents);
+    const result = compileGrammar(contents, { noPrelude });
 
     console.log(result);
 }
@@ -55,7 +67,13 @@ function compileLiteral(literal: string, idx: number) {
 }
 
 function compileLexLiteral(literal: string, idx: number) {
-
+    return `
+    const ${tmp(idx)} = lit_macro(${literal}, input, end);
+    if (${tmp(idx)}.kind === 'left') {
+        return ${tmp(idx)};
+    }
+    const [$end${idx}, $${idx}] = ${tmp(idx)}.value;
+    end = $end${idx};`
 }
 
 function compileRuleInvokation(rule: string, idx: number) {
@@ -77,10 +95,10 @@ function compileAny(idx: number) {
     end++;`;
 }
 
-function compileNot(pattern: string, idx: number): string {
+function compileNot(pattern: string, scope: Scope, idx: number): string {
     return `
     const $cc${idx} = (input: string, start: number, end: number) => {
-        ${compileSimple(pattern, idx).replace(/^    /gm, '        ')}
+        ${compileSimple(pattern, scope, idx).replace(/^    /gm, '        ')}
         return { kind: 'right', value: $${idx} } as const;
     };
     if ($cc${idx}(input, end, end).kind === 'right') {
@@ -93,7 +111,7 @@ function compileNot(pattern: string, idx: number): string {
     end++;`;
 }
 
-function compileSimple(pattern: string, idx: number) {
+function compileSimple(pattern: string, scope: Scope, idx: number) {
     if (pattern[0] === '/') {
         return compileRx(pattern, idx);
     }
@@ -112,16 +130,18 @@ function compileSimple(pattern: string, idx: number) {
 
     const notPattern = /not\((.*)\)/.exec(pattern);
     if (notPattern) {
-        return compileNot(notPattern[1], idx);
+        return compileNot(notPattern[1], scope, idx);
     }
-
+    if (scope[pattern]) {
+        return compileLiteral(pattern, idx);
+    }
     return compileRuleInvokation(pattern, idx);
 }
 
-function compilePattern(pattern: string, idx: number) {
+function compilePattern(pattern: string, scope: Scope, idx: number) {
     const [_, sp, modifier] = /(.+?)([?*+])?$/.exec(pattern)!;
 
-    const code = compileSimple(sp, idx);
+    const code = compileGroup(sp, scope, idx);
     if (!modifier) {
         return code;
     }
@@ -180,16 +200,67 @@ function compilePattern(pattern: string, idx: number) {
     throw 'fail: whooops!';
 }
 
-function compileAlternative(alt: string) {
-    const [seq, mapper] = alt.split(/ *%% */);
-    const compiled = seq
-        .replace(/'[^']+?'/g, x => x.replaceAll(' ', '>>>space<<<'))   // map space in strings
-        .replace(/\/[^']+?\//g, x => x.replaceAll(' ', '>>>space<<<')) // map space in regexps
+function addSubPattern(pattern: string, map: Map<string, string>) {
+    const key = '>>>' + map.size + '<<<';
+    map.set(key, pattern);
+    return key;
+}
+
+function revertSubPatterns(pattern: string, map: Map<string, string>): string {
+    return pattern.replace(/>>>\d+<<</g, x => revertSubPatterns(map.get(x)!, map));
+}
+
+function splitSequence(seq: string) {
+    const subPatterns = new Map<string, string>();
+
+    return seq
+        .replace(/\B(\([^\)]+?\))\B/g, x => addSubPattern(x, subPatterns)) // save (group)
+        .replace(/\B(\/[^/]+?\/)\B/g,  x => addSubPattern(x, subPatterns)) // save /regexp/
+        .replace(/\B(`[^`]+?`)\B/g,    x => addSubPattern(x, subPatterns)) // save 'string'
+        .replace(/\B('[^']+?')\B/g,    x => addSubPattern(x, subPatterns)) // save `string`
         .split(/ +/)
-        .map(s => s.replaceAll('>>>space<<<', ' '))
-        .map(compilePattern);
+        .map(pat => revertSubPatterns(pat, subPatterns));
+}
+
+function compileGroup(pattern: string, scope: Scope, idx: number): string {
+    if (pattern[0] !== '(') {
+        return compileSimple(pattern, scope, idx);
+    }
+
+    const subPatterns = splitSequence(pattern.slice(1, -1));
+    const compiled = subPatterns
+        .map((pat, idx) => pat[0] === '!'
+            ? [ true, idx, compilePattern(pat.slice(1), scope, idx) ] as const
+            : [ false, idx, compilePattern(pat, scope, idx) ] as const
+        );
 
     const code = compiled
+        .map(([extract, idx, code]) => code)
+        .join('\n');
+
+    const toExtract = compiled
+        .flatMap(([extract, idx]) => extract ? [idx] : []);
+
+    const projection = toExtract.length === 0 ? `[ ${subPatterns.map((_, i) => '$' + i).join(', ')} ]` : // extract all matches in a tuple
+                       toExtract.length === 1 ? '$' + toExtract[0]                                       // extract a single result
+                                              : `[ ${toExtract.map(i => '$' + i).join(', ')} ]`;         // extract the selected
+
+    return `
+    const $cc${idx} = (input: string, start: number) => {
+        let end = start;
+        ${code.replace(/^    /gm, '        ')}
+        return { kind: 'right', value: [ end, ${projection} ] } as const;
+    };
+    ${compileRuleInvokation(`$cc${idx}`, idx)}`;
+}
+
+function compileAlternative(alt: string, scope: Scope) {
+    const [seq, mapper] = alt
+        .replace(/\\\n\s* %%/g, '\n')
+        .split(/ *%% */);
+
+    const code = splitSequence(seq)
+        .map((pat, idx) => compilePattern(pat, scope, idx))
         .join('\n');
 
     return `
@@ -203,9 +274,12 @@ function compileAlternative(alt: string) {
 
 function compileRule(rule: string) {
     const [_0, name, _1, type, ruleBody] = /^(`\w+`|\w+)(:\s*(\w+))?\s*= *(.*)$/s.exec(rule)!;
+    const scope = name[0] === '`'
+        ? { [name.slice(1, -1)]: true }
+        : {};
 
     const alternatives = ruleBody.split(/\s+\|\s+/)
-        .map(compileAlternative);
+        .map(alt => compileAlternative(alt, scope));
 
     let code;
     if (alternatives.length === 1) {
@@ -231,7 +305,9 @@ function compileRule(rule: string) {
 
     if (name[0] == '`') {
         return `
-function
+function lit_macro<S extends string>(${name.slice(1, -1)}: S, input: string, start: number) {
+    ${code}
+}
 `;
     }
 
@@ -333,17 +409,19 @@ export function parse<T>(grammar: (input: string, start: number) => $Match<T>, s
 `;
 
 
-function compileGrammar(g: string) {
+function compileGrammar(g: string, options: Options) {
     const pasta = [ ... g.matchAll(/%\{(.*?)\}%/gs) ]
         .map(x => x[1].trim())
 
     const matchedRules = g
-        .replaceAll(/%\{(.*?)\}%/gs, '')                  // remove the pasta
-        .matchAll(/(\w+(:\s*(\w+))?\s*=.+?)\s+;/gs);
+        .replaceAll(/%\{(.*?)\}%/gs, '')                          // remove the pasta
+        .replaceAll(/--.*/g, '')                                  // remove comments
+        .matchAll(/((`\w+`|\w+)(:\s*(\w+))?\s*=.+?)\s+;/gs);
 
     const left = g
-        .replaceAll(/%\{(.*?)\}%/gs, '')                  // remove the pasta
-        .replaceAll(/(\w+(:\s*(\w+))?\s*=.+?)\s+;/gs, '') // remove the rules
+        .replaceAll(/%\{(.*?)\}%/gs, '')                           // remove the pasta
+        .replaceAll(/--.*/g, '')                                   // remove comments
+        .replaceAll(/((`\w+`|\w+)(:\s*(\w+))?\s*=.+?)\s+;/gs, '')  // remove the rules
         .trim();
     if (left) {
         console.log('Cannot compile: \n\n'+ left);
@@ -357,7 +435,11 @@ function compileGrammar(g: string) {
     }
 
 
-    return [ prelude, ...pasta, ...rules ].join('\n');
+    return [
+        ...(options.noPrelude ? [] : [ prelude ]),
+        ...pasta,
+        ...rules
+    ].join('\n');
 }
 
 main();
