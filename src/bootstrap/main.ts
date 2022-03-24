@@ -66,9 +66,9 @@ function compileLiteral(literal: string, idx: number) {
     end += $${idx}.length;`
 }
 
-function compileLexLiteral(literal: string, idx: number) {
+function compileLexLiteral(macro: { prefix: string, lit: string }, idx: number) {
     return `
-    const ${tmp(idx)} = lit_macro(${literal}, input, end);
+    const ${tmp(idx)} = ${macro.prefix}(\`${macro.lit}\`, input, end);
     if (${tmp(idx)}.kind === 'left') {
         return ${tmp(idx)};
     }
@@ -147,8 +147,9 @@ function compileSimple(pattern: string, scope: Scope, idx: number) {
         return compileLiteral(pattern, idx);
     }
 
-    if (pattern[0] === '`') {
-        return compileLexLiteral(pattern, idx);
+    const macro = destructLitMacro(pattern);
+    if (macro) {
+        return compileLexLiteral(macro, idx);
     }
 
     if (pattern[0] === '$') {
@@ -314,10 +315,18 @@ function compileAlternative(alt: string, scope: Scope) {
     return { kind: 'right', value: [ end, ${mapper || '$0'} ] } as const;`;
 }
 
+function destructLitMacro(s: string) {
+    const [_, prefix, lit ] = /^(\w+)?`(.+)`$/.exec(s) || [];
+
+    return lit ? { prefix: prefix || 'lit_macro', lit }
+               : undefined;
+}
+
 function compileRule(rule: string) {
-    const [_0, name, _1, type, ruleBody] = /^(`\w+`|\w+)(:\s*(\w+))?\s*= *(.*)$/s.exec(rule)!;
-    const scope = name[0] === '`'
-        ? { [name.slice(1, -1)]: true }
+    const [_0, name, _1, type, ruleBody] = /^((?:\w+)?`\w+`|\w+)(:\s*(\w+))?\s*= *(.*)$/s.exec(rule)!;
+    const macro = destructLitMacro(name);
+    const scope = macro
+        ? { [macro.lit]: true }
         : {};
 
     const alternatives = ruleBody.split(/\s+\|\s+/)
@@ -345,9 +354,9 @@ function compileRule(rule: string) {
     return ${tmp(alternatives.length - 1)};`
     }
 
-    if (name[0] == '`') {
+    if (macro) {
         return `
-function lit_macro<S extends string>(${name.slice(1, -1)}: S, input: string, start: number) {
+function ${macro.prefix}<S extends string>(${macro.lit}: S, input: string, start: number)${(type ? `: $Match<${type}>` : '')} {
     ${code}
 }
 `;
@@ -456,14 +465,14 @@ function compileGrammar(g: string, options: Options) {
         .map(x => x[1].trim())
 
     const matchedRules = g
-        .replaceAll(/%\{(.*?)\}%/gs, '')                          // remove the pasta
-        .replaceAll(/--.*/g, '')                                  // remove comments
-        .matchAll(/((`\w+`|\w+)(:\s*(\w+))?\s*=.+?)\s+;/gs);
+        .replaceAll(/%\{(.*?)\}%/gs, '')                                 // remove the pasta
+        .replaceAll(/--.*/g, '')                                         // remove comments
+        .matchAll(/(((\w+)?`\w+`|\w+)(:\s*(\w+))?\s*=.+?)\s+;/gs);
 
     const left = g
-        .replaceAll(/%\{(.*?)\}%/gs, '')                           // remove the pasta
-        .replaceAll(/--.*/g, '')                                   // remove comments
-        .replaceAll(/((`\w+`|\w+)(:\s*(\w+))?\s*=.+?)\s+;/gs, '')  // remove the rules
+        .replaceAll(/%\{(.*?)\}%/gs, '')                                 // remove the pasta
+        .replaceAll(/--.*/g, '')                                         // remove comments
+        .replaceAll(/(((\w+)?`\w+`|\w+)(:\s*(\w+))?\s*=.+?)\s+;/gs, '')  // remove the rules
         .trim();
     if (left) {
         console.log('Cannot compile: \n\n'+ left);
