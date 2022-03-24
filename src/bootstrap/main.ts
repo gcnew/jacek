@@ -111,6 +111,33 @@ function compileNot(pattern: string, scope: Scope, idx: number): string {
     end++;`;
 }
 
+function compileLook(pattern: string, scope: Scope, idx: number): string {
+    return `
+    const $cc${idx} = (input: string, start: number, end: number) => {
+        ${compileSimple(pattern, scope, idx).replace(/^    /gm, '        ')}
+        return { kind: 'right', value: [ end, $${idx} ] } as const;
+    };
+    const ${tmp(idx)} = $cc${idx}(input, end, end);
+    if (${tmp(idx)}.kind === 'left') {
+        return { kind: 'left', value: { kind: 'no_match', expected: '<look>', idx: end } } as const;
+    }
+    const $${idx} = ${tmp(idx)}.value[1];`;
+}
+
+function compileTry(pattern: string, scope: Scope, idx: number): string {
+    return `
+    const $cc${idx} = (input: string, start: number, end: number) => {
+        ${compileSimple(pattern, scope, idx).replace(/^    /gm, '        ')}
+        return { kind: 'right', value: [ end, $${idx} ] } as const;
+    };
+    const ${tmp(idx)} = $cc${idx}(input, end, end);
+    if (${tmp(idx)}.kind === 'left') {
+        return { kind: 'left', value: { kind: 'no_match', expected: '<try>', idx: end } } as const;
+    }
+    const [$end${idx}, $${idx}] = ${tmp(idx)}.value;
+    end = $end${idx};`;
+}
+
 function compileSimple(pattern: string, scope: Scope, idx: number) {
     if (pattern[0] === '/') {
         return compileRx(pattern, idx);
@@ -136,6 +163,17 @@ function compileSimple(pattern: string, scope: Scope, idx: number) {
     if (notPattern) {
         return compileNot(notPattern[1], scope, idx);
     }
+
+    const lookPattern = /look\((.*)\)/.exec(pattern);
+    if (lookPattern) {
+        return compileLook(lookPattern[1], scope, idx);
+    }
+
+    const tryPattern = /try\((.*)\)/.exec(pattern);
+    if (tryPattern) {
+        return compileTry(tryPattern[1], scope, idx);
+    }
+
     if (scope[pattern]) {
         return compileLiteral(pattern, idx);
     }
