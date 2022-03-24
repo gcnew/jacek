@@ -117,6 +117,9 @@ function compileSimple(pattern, scope, idx) {
     if (pattern[0] === '`') {
         return compileLexLiteral(pattern, idx);
     }
+    if (pattern[0] === '$') {
+        return compileLiteral(pattern, idx);
+    }
     if (pattern === '.') {
         return compileAny(idx);
     }

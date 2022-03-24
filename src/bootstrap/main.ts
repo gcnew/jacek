@@ -124,6 +124,10 @@ function compileSimple(pattern: string, scope: Scope, idx: number) {
         return compileLexLiteral(pattern, idx);
     }
 
+    if (pattern[0] === '$') {
+        return compileLiteral(pattern, idx);
+    }
+
     if (pattern === '.') {
         return compileAny(idx);
     }
