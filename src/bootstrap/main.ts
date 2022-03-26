@@ -257,10 +257,10 @@ function splitSequence(seq: string) {
     const subPatterns = new Map<string, string>();
 
     return seq
-        .replace(/\B(\([^\)]+?\))\B/g, x => addSubPattern(x, subPatterns)) // save (group)
-        .replace(/\B(\/[^/]+?\/)\B/g,  x => addSubPattern(x, subPatterns)) // save /regexp/
-        .replace(/\B(`[^`]+?`)\B/g,    x => addSubPattern(x, subPatterns)) // save 'string'
-        .replace(/\B('[^']+?')\B/g,    x => addSubPattern(x, subPatterns)) // save `string`
+        .replace(/\B('[^']+?')\B/g,         x => addSubPattern(x, subPatterns)) // save 'string'
+        .replace(/\B(`[^`]+?`)\B/g,         x => addSubPattern(x, subPatterns)) // save `string`
+        .replace(/\B(\/[^/]+?\/)(\B|\b)/g,  x => addSubPattern(x, subPatterns)) // save /regexp/
+        .replace(/\B(\([^\)]+?\))\B/g,      x => addSubPattern(x, subPatterns)) // save (group)
         .split(/ +/)
         .map(pat => revertSubPatterns(pat, subPatterns));
 }
@@ -299,7 +299,7 @@ function compileGroup(pattern: string, scope: Scope, idx: number): string {
 
 function compileAlternative(alt: string, scope: Scope) {
     const [seq, mapper] = alt
-        .replace(/\\\n\s* %%/g, '\n')
+        .replace(/(\\)?\n\s* %% /g, '\n')
         .split(/ *%% */);
 
     const code = splitSequence(seq)
@@ -312,7 +312,8 @@ function compileAlternative(alt: string, scope: Scope) {
     ${code}
 
     const text = () => input.substring(start, end);
-    return { kind: 'right', value: [ end, ${mapper || '$0'} ] } as const;`;
+    const $mapped = ${mapper || '$0'};
+    return { kind: 'right', value: [ end, $mapped ] } as const;`;
 }
 
 function destructLitMacro(s: string) {
@@ -370,14 +371,10 @@ export function ${name}(input: string, start: number)${(type ? `: $Match<${type}
 }
 
 const prelude = `
-type $StripReadonly<T> = {
-    -readonly [P in keyof T]: T[P];
-}
+type $Either<L, R> = { readonly kind: 'left',  readonly value: L }
+                   | { readonly kind: 'right', readonly value: R }
 
-type $Either<L, R> = { kind: 'left',  value: L }
-                   | { kind: 'right', value: R }
-
-type $NoMatch<T> = { kind: 'no_match', expected: T, idx: number }
+type $NoMatch<T> = { readonly kind: 'no_match', readonly expected: T, readonly idx: number }
 
 type $Match<T> = $Either<$NoMatch<string | RegExp>, readonly [number, T]>
 
@@ -487,9 +484,9 @@ function compileGrammar(g: string, options: Options) {
 
 
     return [
-        ...(options.noPrelude ? [] : [ prelude ]),
         ...pasta,
-        ...rules
+        ...rules,
+        ...(options.noPrelude ? [] : [ prelude ])
     ].join('\n');
 }
 

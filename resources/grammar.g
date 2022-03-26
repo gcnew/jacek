@@ -141,7 +141,7 @@ alternatives = pattern (`|` !pattern)*              %% [ $0, ...$1 ]
 type = `:` id                                       %% $1
      ;
 
-rule = id type? `=` alternatives `;`                %% mkRule($0, $1, $5 as $StripReadonly<typeof $5>)
+rule = id type? `=` alternatives `;`                %% mkRule($0, $1, $3)
      ;
 
 pastaText = not('}%')*                              %% mkText(start, end, text())
