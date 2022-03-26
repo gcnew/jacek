@@ -132,6 +132,19 @@ function compileTry(pattern, scope, idx) {
     const [$end${idx}, $${idx}] = ${tmp(idx)}.value;
     end = $end${idx};`;
 }
+function compileBacktrack(pattern, scope, idx) {
+    return `
+    const $cc${idx} = (input: string, start: number, end: number) => {
+        ${compileSimple(pattern, scope, idx).replace(/^    /gm, '        ')}
+        return { kind: 'right', value: [ end, $${idx} ] } as const;
+    };
+    const ${tmp(idx)} = $cc${idx}(input.slice(0, end).split('').reverse().join(''), 0, 0);
+    if (${tmp(idx)}.kind === 'left') {
+        return { kind: 'left', value: { kind: 'no_match', expected: '<backtrack>', idx: end } } as const;
+    }
+    const [$end${idx}, $${idx}] = ${tmp(idx)}.value;
+    end = end - $end${idx};`;
+}
 function compileSimple(pattern, scope, idx) {
     if (pattern[0] === '/') {
         return compileRx(pattern, idx);
@@ -144,7 +157,8 @@ function compileSimple(pattern, scope, idx) {
         return compileLexLiteral(macro, idx);
     }
     if (pattern[0] === '$') {
-        return compileLiteral(pattern, idx);
+        const renamed = scope[pattern] || pattern;
+        return compileLiteral(renamed, idx);
     }
     if (pattern === '.') {
         return compileAny(idx);
@@ -160,6 +174,10 @@ function compileSimple(pattern, scope, idx) {
     const tryPattern = /try\((.*)\)/.exec(pattern);
     if (tryPattern) {
         return compileTry(tryPattern[1], scope, idx);
+    }
+    const backtrackPattern = /backtrack\((.*)\)/.exec(pattern);
+    if (backtrackPattern) {
+        return compileBacktrack(backtrackPattern[1], scope, idx);
     }
     if (scope[pattern]) {
         return compileLiteral(pattern, idx);
@@ -245,6 +263,15 @@ function compileGroup(pattern, scope, idx) {
         return compileSimple(pattern, scope, idx);
     }
     const subPatterns = splitSequence(pattern.slice(1, -1));
+    const renames = subPatterns.filter(x => /\$\d+/.test(x))
+        .map(x => {
+        const v = /\$\d+/.exec(x)[0];
+        return [v, v + 'r'];
+    });
+    scope = {
+        ...scope,
+        ...Object.fromEntries(renames)
+    };
     const compiled = subPatterns
         .map((pat, idx) => pat[0] === '!'
         ? [true, idx, compilePattern(pat.slice(1), scope, idx)]
@@ -263,6 +290,7 @@ function compileGroup(pattern, scope, idx) {
         ${code.replace(/^    /gm, '        ')}
         return { kind: 'right', value: [ end, ${projection} ] } as const;
     };
+    ${renames.map(([og, renamed]) => `const ${renamed} = ${og};`).join('\n    ')}
     ${compileRuleInvokation(`$cc${idx}`, idx)}`;
 }
 function compileAlternative(alt, scope) {
@@ -290,7 +318,7 @@ function compileRule(rule) {
     const [_0, name, _1, type, ruleBody] = /^((?:\w+)?`\w+`|\w+)(:\s*(\w+))?\s*= *(.*)$/s.exec(rule);
     const macro = destructLitMacro(name);
     const scope = macro
-        ? { [macro.lit]: true }
+        ? { [macro.lit]: 'true' }
         : {};
     const alternatives = ruleBody.split(/\s+\|\s+/)
         .map(alt => compileAlternative(alt, scope));

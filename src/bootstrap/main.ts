@@ -6,7 +6,7 @@ type Expando<V> = {
     [key: string]: V
 }
 
-type Scope = Expando<boolean>
+type Scope = Expando<string>
 
 type Options = {
     noPrelude: boolean
@@ -138,6 +138,20 @@ function compileTry(pattern: string, scope: Scope, idx: number): string {
     end = $end${idx};`;
 }
 
+function compileBacktrack(pattern: string, scope: Scope, idx: number): string {
+    return `
+    const $cc${idx} = (input: string, start: number, end: number) => {
+        ${compileSimple(pattern, scope, idx).replace(/^    /gm, '        ')}
+        return { kind: 'right', value: [ end, $${idx} ] } as const;
+    };
+    const ${tmp(idx)} = $cc${idx}(input.slice(0, end).split('').reverse().join(''), 0, 0);
+    if (${tmp(idx)}.kind === 'left') {
+        return { kind: 'left', value: { kind: 'no_match', expected: '<backtrack>', idx: end } } as const;
+    }
+    const [$end${idx}, $${idx}] = ${tmp(idx)}.value;
+    end = end - $end${idx};`;
+}
+
 function compileSimple(pattern: string, scope: Scope, idx: number) {
     if (pattern[0] === '/') {
         return compileRx(pattern, idx);
@@ -153,7 +167,8 @@ function compileSimple(pattern: string, scope: Scope, idx: number) {
     }
 
     if (pattern[0] === '$') {
-        return compileLiteral(pattern, idx);
+        const renamed = scope[pattern] || pattern;
+        return compileLiteral(renamed, idx);
     }
 
     if (pattern === '.') {
@@ -173,6 +188,11 @@ function compileSimple(pattern: string, scope: Scope, idx: number) {
     const tryPattern = /try\((.*)\)/.exec(pattern);
     if (tryPattern) {
         return compileTry(tryPattern[1], scope, idx);
+    }
+
+    const backtrackPattern = /backtrack\((.*)\)/.exec(pattern);
+    if (backtrackPattern) {
+        return compileBacktrack(backtrackPattern[1], scope, idx);
     }
 
     if (scope[pattern]) {
@@ -271,6 +291,17 @@ function compileGroup(pattern: string, scope: Scope, idx: number): string {
     }
 
     const subPatterns = splitSequence(pattern.slice(1, -1));
+    const renames = subPatterns.filter(x => /\$\d+/.test(x))
+        .map(x => {
+            const v = /\$\d+/.exec(x)![0];
+            return [v, v + 'r'] as const;
+        });
+
+    scope = {
+        ...scope,
+        ... Object.fromEntries(renames)
+    };
+
     const compiled = subPatterns
         .map((pat, idx) => pat[0] === '!'
             ? [ true, idx, compilePattern(pat.slice(1), scope, idx) ] as const
@@ -294,6 +325,7 @@ function compileGroup(pattern: string, scope: Scope, idx: number): string {
         ${code.replace(/^    /gm, '        ')}
         return { kind: 'right', value: [ end, ${projection} ] } as const;
     };
+    ${renames.map(([og, renamed]) => `const ${renamed} = ${og};`).join('\n    ')}
     ${compileRuleInvokation(`$cc${idx}`, idx)}`;
 }
 
@@ -327,7 +359,7 @@ function compileRule(rule: string) {
     const [_0, name, _1, type, ruleBody] = /^((?:\w+)?`\w+`|\w+)(:\s*(\w+))?\s*= *(.*)$/s.exec(rule)!;
     const macro = destructLitMacro(name);
     const scope = macro
-        ? { [macro.lit]: true }
+        ? { [macro.lit]: 'true' }
         : {};
 
     const alternatives = ruleBody.split(/\s+\|\s+/)
@@ -486,7 +518,7 @@ function compileGrammar(g: string, options: Options) {
     return [
         ...pasta,
         ...rules,
-        ...(options.noPrelude ? [] : [ prelude ])
+        ... (options.noPrelude ? [] : [ prelude ])
     ].join('\n');
 }
 
