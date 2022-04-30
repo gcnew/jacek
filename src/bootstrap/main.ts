@@ -18,7 +18,7 @@ function main() {
         .filter(x => x !== '--no-prelude');
 
     if (!grammarFile) {
-        console.log('syntax: bootstrap <grammar-file> [--no-prelude]');
+        console.log('syntax: jacek <grammar-file> [--no-prelude]');
         process.exit(1);
     }
 
@@ -320,12 +320,12 @@ function compileGroup(pattern: string, scope: Scope, idx: number): string {
                                               : `[ ${toExtract.map(i => '$' + i).join(', ')} ]`;         // extract the selected
 
     return `
+    ${renames.map(([og, renamed]) => `const ${renamed} = ${og};`).join('\n    ')}
     const $cc${idx} = (input: string, start: number) => {
         let end = start;
         ${code.replace(/^    /gm, '        ')}
         return { kind: 'right', value: [ end, ${projection} ] } as const;
     };
-    ${renames.map(([og, renamed]) => `const ${renamed} = ${og};`).join('\n    ')}
     ${compileRuleInvokation(`$cc${idx}`, idx)}`;
 }
 
