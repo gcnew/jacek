@@ -1,23 +1,45 @@
 
 %{
 
-export type SimplePattern = Literal | Regexp | Any | Not | Id
+export type SimplePattern = Literal | Regexp | Any | Apply | Id | Template | Group | Variable
 
-export type Any     = { kind: 'any',     start: number, end: number }
-export type Id      = { kind: 'id',      start: number, end: number, text: string }
-export type Literal = { kind: 'literal', start: number, end: number, text: string }
-export type Regexp  = { kind: 'regexp',  start: number, end: number, text: string }
-export type Text    = { kind: 'text',    start: number, end: number, text: string }
-export type Not     = { kind: 'not',     start: number, end: number, pattern: SimplePattern }
+export type Any        = { kind: 'any',      start: number, end: number }
+export type Id         = { kind: 'id',       start: number, end: number, text: string }
+export type Template   = { kind: 'template', start: number, end: number, text: string }
+export type Literal    = { kind: 'literal',  start: number, end: number, text: string }
+export type Regexp     = { kind: 'regexp',   start: number, end: number, text: string }
+export type Text       = { kind: 'text',     start: number, end: number, text: string }
+export type Variable   = { kind: 'variable', start: number, end: number, text: string }
 
-export type Rep     = { kind: 'rep',     pattern: SimplePattern, modifier?: '*' | '+' | '?' }
+export type Group = {
+    kind: 'group',
+    start: number,
+    end: number,
+    patterns: {
+        important: boolean,
+        pattern: Rep
+    }[]
+}
 
-export type Pattern = { kind: 'pattern', seq: Rep[], mapper?: Text }
+export type Lit<S>     = { start: number, end: number, text: S }
 
-export type Rule    = { kind: 'rule',    id: Id,  alternatives: Pattern[], type?: Id }
+export type Apply = {
+    kind: 'apply',
+    start: number,
+    end: number,
+    func: Id,
+    pattern: SimplePattern
+}
 
-export type Pasta   = { kind: 'pasta',   text: Text }
-export type Grammar = { kind: 'grammar', pasta: Pasta[], rules: Rule[] }
+export type Rep         = { kind: 'rep', pattern:  SimplePattern, modifier?: Lit<'*' | '+' | '?'> }
+
+export type Alternative = { kind: 'alt', patterns: Rep[],         mapper?: Text }
+
+export type Rule        = { kind: 'rule',         id: Id, template?: Id, type?: Id, alternatives: Alternative[] }
+                        | { kind: 'templateRule',         template:  Id, type?: Id, alternatives: Alternative[] }
+
+export type Pasta    = { kind: 'pasta',   text: Text }
+export type Grammar  = { kind: 'grammar', pasta: Pasta[], rules: Rule[] }
 
 function mkAny(start: number, end: number): Any {
     return { kind: 'any', start, end };
@@ -31,6 +53,10 @@ function mkLiteral(start: number, end: number, text: string): Literal {
     return { kind: 'literal', start, end, text };
 }
 
+function mkTemplate(start: number, end: number, text: string): Template {
+    return { kind: 'template', start, end, text };
+}
+
 function mkRegexp(start: number, end: number, text: string): Regexp {
     return { kind: 'regexp', start, end, text };
 }
@@ -39,20 +65,32 @@ function mkText(start: number, end: number, text: string): Text {
     return { kind: 'text', start, end, text };
 }
 
-function mkNot(start: number, end: number, pattern: SimplePattern): Not {
-    return { kind: 'not', start, end, pattern };
+function mkVariable(start: number, end: number, text: string): Variable {
+    return { kind: 'variable', start, end, text };
 }
 
-function mkRep(pattern: SimplePattern, modifier: '*' | '+' | '?' | undefined): Rep {
+function mkGroup(start: number, end: number, patterns: Group['patterns']): Group {
+    return { kind: 'group', start, end, patterns };
+}
+
+function mkApply(end: number, func: Id, pattern: SimplePattern): Apply {
+    return { kind: 'apply', start: func.start, end, func, pattern };
+}
+
+function mkRep(pattern: SimplePattern, modifier: Lit<'*' | '+' | '?'> | undefined): Rep {
     return { kind: 'rep', pattern, modifier };
 }
 
-function mkPattern(seq: Rep[], mapper: Text | undefined): Pattern {
-    return { kind: 'pattern', seq, mapper };
+function mkAlternative(patterns: Rep[], mapper: Text | undefined): Alternative {
+    return { kind: 'alt', patterns, mapper };
 }
 
-function mkRule(id: Id, type: Id | undefined, alternatives: Pattern[]): Rule {
-    return { kind: 'rule', id, type, alternatives };
+function mkRule(id: Id, template: Id | undefined, type: Id | undefined, alternatives: Alternative[]): Rule {
+    return { kind: 'rule', id, template, type, alternatives };
+}
+
+function mkTemplateRule(template: Id, type: Id | undefined, alternatives: Alternative[]): Rule {
+    return { kind: 'templateRule', template, type, alternatives };
 }
 
 function mkPasta(text: Text): Pasta {
@@ -63,8 +101,16 @@ function mkGrammar(pasta: Pasta[], rules: Rule[]): Grammar {
     return { kind: 'grammar', pasta, rules };
 }
 
+function notWsPreceeding(input: string, start: number): $Match<true> {
+    if (start >= input.length || start < 1 || /\s/.test(input[start - 1])) {
+        return { kind: 'left', value: { kind: 'no_match', expected: '<space>', idx: start } } as const;
+    }
+
+    return { kind: 'right', value: [start, true] };
+}
 
 }%
+
 
 `lit` = lit ws                              %% { text: $0, start, end: start + $0.length }
       ;
@@ -79,8 +125,15 @@ literalPart = '\\\''                        %% '\''
             | not('\'')
             ;
 
-literal = '\'' literalPart* `\'`            %% mkLiteral(start, $2.end, $1.join(''))
+literal = '\'' literalPart* `'`             %% mkLiteral(start, $2.end, $1.join(''))
         ;
+
+templatePart = '\\`'                        %% '`'
+             | not('`')
+             ;
+
+template = '`' templatePart* `\``           %% mkTemplate(start, $2.end, $1.join(''))
+         ;
 
 rxPart = '\\/'
        | not('/')
@@ -97,22 +150,23 @@ macroPattern = literal
              | regex
              | any
              | id
+             | template
              ;
 
-not = `not` `(` macroPattern `)`            %% mkNot(start, $3.end, $2)
+invokation = notWsPreceeding `(` macroPattern `)`   %% { pattern: $2, end: $3.end }
+           ;
+
+any = `.`                                           %% mkAny($0.start, $0.end)
     ;
 
-look = `look` `(` macroPattern `)`          %% mkLook(start, $3.end, $2)
-     ;
-
-any = `.`                                   %% mkAny(start, $1.end)
-    ;
-
-simplePattern = literal
+simplePattern: SimplePattern
+              = literal
               | regex
               | any
-              | not
-              | id
+              | template
+              | `(` ('!'? rep)+ `)`                 %% mkGroup($0.start, $2.end, $1.map(([imp, pattern]) => ({ important: !imp, pattern })))
+              | '$' /\d+/ ws                        %% mkVariable(start, start + $1.length + 1, $1)
+              | id invokation?                      %% $1 ? mkApply($1.end, $0, $1.pattern) : $0
               ;
 
 repModifier = `?`
@@ -123,25 +177,23 @@ repModifier = `?`
 rep = simplePattern repModifier?                    %% mkRep($0, $1)
     ;
 
-seq = rep ws                                        %% $0
-    ;
-
 mapperText = not('\n')*                             %% mkText(start, end, text().trim())
            ;
 
-lookMapper = '\%\%' mapperText                      %% $1
-           ;
+alternative = rep+ ('\%\%' !mapperText)? ws         %% mkAlternative($0, $1)
+            ;
 
-pattern = seq+ lookMapper? ws                       %% mkPattern($0, $1)
-        ;
-
-alternatives = pattern (`|` !pattern)*              %% [ $0, ...$1 ]
+alternatives = alternative (`|` !alternative)*      %% [ $0, ...$1 ]
             ;
 
 type = `:` id                                       %% $1
      ;
 
-rule = id type? `=` alternatives `;`                %% mkRule($0, $1, $3)
+templateId = '`' id '`' ws                          %% $1
+           ;
+
+rule = id templateId? type? `=` alternatives `;`    %% mkRule($0, $1, $2, $4)
+     |    templateId  type? `=` alternatives `;`    %% mkTemplateRule($0, $1, $3)
      ;
 
 pastaText = not('}%')*                              %% mkText(start, end, text())

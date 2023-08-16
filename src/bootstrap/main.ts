@@ -277,8 +277,8 @@ function splitSequence(seq: string) {
     const subPatterns = new Map<string, string>();
 
     return seq
-        .replace(/\B('[^']+?')\B/g,         x => addSubPattern(x, subPatterns)) // save 'string'
-        .replace(/\B(`[^`]+?`)\B/g,         x => addSubPattern(x, subPatterns)) // save `string`
+        .replace(/\B('(\\'|[^'])+?')\B/g,   x => addSubPattern(x, subPatterns)) // save 'string'
+        .replace(/\B(`(\\`|[^`])+?`)\B/g,   x => addSubPattern(x, subPatterns)) // save `string`
         .replace(/\B(\/[^/]+?\/)(\B|\b)/g,  x => addSubPattern(x, subPatterns)) // save /regexp/
         .replace(/\B(\([^\)]+?\))\B/g,      x => addSubPattern(x, subPatterns)) // save (group)
         .split(/ +/)
@@ -504,7 +504,7 @@ function compileGrammar(g: string, options: Options) {
         .replaceAll(/(((\w+)?`\w+`|\w+)(:\s*(\w+))?\s*=.+?)\s+;/gs, '')  // remove the rules
         .trim();
     if (left) {
-        console.log('Cannot compile: \n\n'+ left);
+        console.error('Cannot compile: \n\n'+ left);
         process.exit(1);
     }
 
