@@ -331,7 +331,7 @@ function compileGroup(pattern: string, scope: Scope, idx: number): string {
 
 function compileAlternative(alt: string, scope: Scope) {
     const [seq, mapper] = alt
-        .replace(/(\\)?\n\s* %% /g, '\n')
+        .replace(/(\\)?\n\s*(%% )?/g, '\n')
         .split(/ *%% */);
 
     const code = splitSequence(seq)
@@ -356,7 +356,8 @@ function destructLitMacro(s: string) {
 }
 
 function compileRule(rule: string) {
-    const [_0, name, _1, type, ruleBody] = /^((?:\w+)?`\w+`|\w+)(:\s*(\w+))?\s*= *(.*)$/s.exec(rule)!;
+    const [_0, name, _1, type0, ruleBody] = /^((?:\w+)?`\w+`|\w+)(:\s*(\w+))?\s*= *(.*)$/s.exec(rule)!;
+    const type = type0 === 'infer' ? undefined : type0;
     const macro = destructLitMacro(name);
     const scope = macro
         ? { [macro.lit]: 'true' }
@@ -409,6 +410,14 @@ type $Either<L, R> = { readonly kind: 'left',  readonly value: L }
 type $NoMatch<T> = { readonly kind: 'no_match', readonly expected: T, readonly idx: number }
 
 type $Match<T> = $Either<$NoMatch<string | RegExp>, readonly [number, T]>
+
+export function $fail(expected: string, idx: number): $Match<never> {
+    return { kind: 'left', value: { kind: 'no_match', expected, idx } } as const;
+}
+
+export function $success<T>(value: T, idx: number): $Match<T> {
+    return { kind: 'right', value: [idx, value] } as const;
+}
 
 export function getLineCol(offset: number, lineOffsetTable: [number, string][]): [number, number]|null {
     let idx = binarySearch(lineOffsetTable, x => x[0] < offset ? -1 :

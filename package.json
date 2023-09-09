@@ -28,6 +28,7 @@
 
     "scripts": {
         "package": "tsc -p tsconfig.boot.json && cp built/bootstrap/main.js bin/jacek",
-        "gen": "tsc -p tsconfig.boot.json && node built/bootstrap/main.js resources/grammar.g > src/gen/parser.ts && tsc && node built/main.js resources/grammar.g"
+        "bootstrap": "tsc -p tsconfig.boot.json && node built/bootstrap/main.js resources/grammar.g > src/gen/parser.ts",
+        "gen": "sh script/gen.sh"
     }
 }

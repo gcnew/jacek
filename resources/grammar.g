@@ -5,11 +5,11 @@ export type SimplePattern = Literal | Regexp | Any | Apply | Id | Template | Gro
 
 export type Any        = { kind: 'any',      start: number, end: number }
 export type Id         = { kind: 'id',       start: number, end: number, text: string }
-export type Template   = { kind: 'template', start: number, end: number, text: string }
 export type Literal    = { kind: 'literal',  start: number, end: number, text: string }
 export type Regexp     = { kind: 'regexp',   start: number, end: number, text: string }
 export type Text       = { kind: 'text',     start: number, end: number, text: string }
 export type Variable   = { kind: 'variable', start: number, end: number, text: string }
+export type Template   = { kind: 'template', start: number, end: number, text: string, func?: Id }
 
 export type Group = {
     kind: 'group',
@@ -35,8 +35,8 @@ export type Rep         = { kind: 'rep', pattern:  SimplePattern, modifier?: Lit
 
 export type Alternative = { kind: 'alt', patterns: Rep[],         mapper?: Text }
 
-export type Rule        = { kind: 'rule',         id: Id, template?: Id, type?: Id, alternatives: Alternative[] }
-                        | { kind: 'templateRule',         template:  Id, type?: Id, alternatives: Alternative[] }
+export type Rule        = { kind: 'rule',         id:  Id,               type?: Id, alternatives: Alternative[] }
+                        | { kind: 'templateRule', id?: Id, template: Id, type?: Id, alternatives: Alternative[] }
 
 export type Pasta    = { kind: 'pasta',   text: Text }
 export type Grammar  = { kind: 'grammar', pasta: Pasta[], rules: Rule[] }
@@ -53,8 +53,8 @@ function mkLiteral(start: number, end: number, text: string): Literal {
     return { kind: 'literal', start, end, text };
 }
 
-function mkTemplate(start: number, end: number, text: string): Template {
-    return { kind: 'template', start, end, text };
+function mkTemplate(start: number, end: number, func: Id | undefined, text: string): Template {
+    return { kind: 'template', start, end, func, text };
 }
 
 function mkRegexp(start: number, end: number, text: string): Regexp {
@@ -85,12 +85,12 @@ function mkAlternative(patterns: Rep[], mapper: Text | undefined): Alternative {
     return { kind: 'alt', patterns, mapper };
 }
 
-function mkRule(id: Id, template: Id | undefined, type: Id | undefined, alternatives: Alternative[]): Rule {
-    return { kind: 'rule', id, template, type, alternatives };
+function mkRule(id: Id, type: Id | undefined, alternatives: Alternative[]): Rule {
+    return { kind: 'rule', id, type, alternatives };
 }
 
-function mkTemplateRule(template: Id, type: Id | undefined, alternatives: Alternative[]): Rule {
-    return { kind: 'templateRule', template, type, alternatives };
+function mkTemplateRule(id: Id | undefined, template: Id, type: Id | undefined, alternatives: Alternative[]): Rule {
+    return { kind: 'templateRule', id, template, type, alternatives };
 }
 
 function mkPasta(text: Text): Pasta {
@@ -103,10 +103,10 @@ function mkGrammar(pasta: Pasta[], rules: Rule[]): Grammar {
 
 function notWsPreceeding(input: string, start: number): $Match<true> {
     if (start >= input.length || start < 1 || /\s/.test(input[start - 1])) {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<space>', idx: start } } as const;
+        return $fail('<no space>', start);
     }
 
-    return { kind: 'right', value: [start, true] };
+    return $success(true, start);
 }
 
 }%
@@ -132,7 +132,7 @@ templatePart = '\\`'                        %% '`'
              | not('`')
              ;
 
-template = '`' templatePart* `\``           %% mkTemplate(start, $2.end, $1.join(''))
+template = (!id notWsPreceeding)? '`' templatePart* `\``  %% mkTemplate(start, $3.end, $0, $2.join(''))
          ;
 
 rxPart = '\\/'
@@ -149,8 +149,8 @@ regex = '/' rxPart* '/' rxModifier* ws      %% mkRegexp(start, end - $4.length, 
 macroPattern = literal
              | regex
              | any
+             | try(template)
              | id
-             | template
              ;
 
 invokation = notWsPreceeding `(` macroPattern `)`   %% { pattern: $2, end: $3.end }
@@ -159,20 +159,23 @@ invokation = notWsPreceeding `(` macroPattern `)`   %% { pattern: $2, end: $3.en
 any = `.`                                           %% mkAny($0.start, $0.end)
     ;
 
+variable = '$' /\d+/ ws                             %% mkVariable(start, start + $1.length + 1, $1)
+         ;
+
 simplePattern: SimplePattern
               = literal
               | regex
               | any
-              | template
-              | `(` ('!'? rep)+ `)`                 %% mkGroup($0.start, $2.end, $1.map(([imp, pattern]) => ({ important: !imp, pattern })))
-              | '$' /\d+/ ws                        %% mkVariable(start, start + $1.length + 1, $1)
+              | try(template)
+              | variable
+              | `(` ('!'? rep)+ `)`                 %% mkGroup($0.start, $2.end, $1.map(([imp, pattern]) => ({ important: !!imp, pattern })))
               | id invokation?                      %% $1 ? mkApply($1.end, $0, $1.pattern) : $0
               ;
 
-repModifier = `?`
-            | `*`
-            | `+`
-            ;
+repModifier: infer = `?`
+                   | `*`
+                   | `+`
+                   ;
 
 rep = simplePattern repModifier?                    %% mkRep($0, $1)
     ;
@@ -180,7 +183,12 @@ rep = simplePattern repModifier?                    %% mkRep($0, $1)
 mapperText = not('\n')*                             %% mkText(start, end, text().trim())
            ;
 
-alternative = rep+ ('\%\%' !mapperText)? ws         %% mkAlternative($0, $1)
+mapper = ('\%\%' !mapperText ws)*                   %% $0.length
+                                                    %%      ? $0.reduce((acc, x) => mkText(acc.start, x.end, acc.text + '\n' + x.text))
+                                                    %%      : undefined
+       ;
+
+alternative = rep+ mapper? ws                       %% mkAlternative($0, $1)
             ;
 
 alternatives = alternative (`|` !alternative)*      %% [ $0, ...$1 ]
@@ -189,14 +197,14 @@ alternatives = alternative (`|` !alternative)*      %% [ $0, ...$1 ]
 type = `:` id                                       %% $1
      ;
 
-templateId = '`' id '`' ws                          %% $1
-           ;
+templateDef = id? '`' id '`' ws                     %% ({ id: $0, template: $2 })
+            ;
 
-rule = id templateId? type? `=` alternatives `;`    %% mkRule($0, $1, $2, $4)
-     |    templateId  type? `=` alternatives `;`    %% mkTemplateRule($0, $1, $3)
+rule = try(templateDef) type? `=` alternatives `;`  %% mkTemplateRule($0.id, $0.template, $1, $3)
+     | id type? `=` alternatives `;`                %% mkRule($0, $1, $3)
      ;
 
-pastaText = not('}%')*                              %% mkText(start, end, text())
+pastaText = /.+?(?=}%)/s                            %% mkText(start, end, text())
           ;
 
 pasta = '%\{' pastaText '}%' ws                     %% mkPasta($1)
