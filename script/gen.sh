@@ -8,7 +8,7 @@ GREEN='\033[0;32m'
     set -x
     set -v
 
-    rm -f src/gen/parser.ts src/gen/parser2.ts src/gen/parser3.ts
+    rm -f src/gen/parser.ts src/gen/parser2.ts src/gen/parser3.ts src/gen/parserB.ts
 
     tsc -p tsconfig.boot.json
     node built/bootstrap/main.js resources/grammar.g > src/gen/parser.ts
@@ -22,6 +22,7 @@ GREEN='\033[0;32m'
     node built/main.js resources/grammar.g > src/gen/parser3.ts
 
     diff src/gen/parser2.ts src/gen/parser3.ts > /dev/null
+    rm src/gen/parser2.ts src/gen/parser3.ts
     echo "${GREEN}Success!${NC}"
 )
 

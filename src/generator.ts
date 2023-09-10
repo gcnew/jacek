@@ -93,7 +93,8 @@ function compileAlternative(alt: Alternative) {
         });
 
     const mapper = (alt.mapper?.text || '$0')
-        .replace(/\btext\(\)/, `input.slice(start, $end${patterns.length - 1})`);
+        .replace(/\btext\(\)/, `input.slice(start, $end${patterns.length - 1})`)
+        .replace(/\B\$start(\d+)\b/g, (_, idx) => idx === '0' ? 'start' : `$end${Number(idx) - 1}`);
 
     const endShim = /\bend\b/.test(alt.mapper?.text || '')
         ? [ `const end = $end${patterns.length - 1};` ]

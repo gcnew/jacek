@@ -112,39 +112,36 @@ function notWsPreceeding(input: string, start: number): $Match<true> {
 }%
 
 
-`lit` = lit ws                              %% { text: $0, start, end: start + $0.length }
+`lit` = lit ws                                     %% { text: $0, start, end: start + $0.length }
       ;
 
-ws = /\s*/
+ws = /(\s|#.*)*/
    ;
 
-id = /[_a-zA-Z][_a-zA-Z0-9]*/ ws            %% mkId(start, start + $0.length, $0)
+id = /[_a-zA-Z][_a-zA-Z0-9]*/ ws                   %% mkId(start, start + $0.length, $0)
    ;
 
-literalPart = '\\\''                        %% '\''
-            | not('\'')
-            ;
+# literalPart = '\\\''                             %% '\''
+#             | not('\'')
+#             ;
+#
+# literal = '\'' literalPart* `'`                  %% mkLiteral(start, $2.end, $1.join(''))
 
-literal = '\'' literalPart* `'`             %% mkLiteral(start, $2.end, $1.join(''))
+literal = /'(\\'|[^'])+?'/ ws                      %% mkLiteral(start, $end0, $0.slice(1, -1))
         ;
 
-templatePart = '\\`'                        %% '`'
-             | not('`')
+templateBody = /`(\\`|[^`])+?`/ ws                 %% { text: $0.slice(1, -1), start, end: $end0 }
              ;
 
-template = (!id notWsPreceeding)? '`' templatePart* `\``  %% mkTemplate(start, $3.end, $0, $2.join(''))
+template = (!id notWsPreceeding)? templateBody     %% mkTemplate(start, $1.end, $0, $1.text)
          ;
-
-rxPart = '\\/'
-       | not('/')
-       ;
 
 rxModifier = 'i'
            | 's'
            ;
 
-regex = '/' rxPart* '/' rxModifier* ws      %% mkRegexp(start, end - $4.length, text().slice(0, -$4.length))
-       ;
+regex = /\/(\\\/|[^\/])+?\// rxModifier* ws        %% mkRegexp($start0, $end1, text().slice(0, -$2.length))
+      ;
 
 macroPattern = literal
              | regex
@@ -159,7 +156,7 @@ invokation = notWsPreceeding `(` macroPattern `)`   %% { pattern: $2, end: $3.en
 any = `.`                                           %% mkAny($0.start, $0.end)
     ;
 
-variable = '$' /\d+/ ws                             %% mkVariable(start, start + $1.length + 1, $1)
+variable = '$' /\d+/ ws                             %% mkVariable(start, $start2, $1)
          ;
 
 simplePattern: SimplePattern
@@ -180,7 +177,9 @@ repModifier: infer = `?`
 rep = simplePattern repModifier?                    %% mkRep($0, $1)
     ;
 
-mapperText = not('\n')*                             %% mkText(start, end, text().trim())
+# mapperText = not('\n')*
+
+mapperText = /[^\n]+?\n/                            %% mkText(start, end, text().trim())
            ;
 
 mapper = ('\%\%' !mapperText ws)*                   %% $0.length
@@ -204,10 +203,12 @@ rule = try(templateDef) type? `=` alternatives `;`  %% mkTemplateRule($0.id, $0.
      | id type? `=` alternatives `;`                %% mkRule($0, $1, $3)
      ;
 
-pastaText = /.+?(?=}%)/s                            %% mkText(start, end, text())
-          ;
+# pastaText = not('}%')*                            %% mkText(start, end, text())
+#           ;
+# pasta = '%\{' pastaText '}%' ws                   %% mkPasta($1)
+#       ;
 
-pasta = '%\{' pastaText '}%' ws                     %% mkPasta($1)
+pasta = /%\{.+?}%/s ws                              %% mkPasta(mkText(start + 2, $end0 - 2, $0.slice(2, -2)))
       ;
 
 eof = /$/

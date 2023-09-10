@@ -13,7 +13,7 @@ function main() {
     const source = fs.readFileSync(grammarFile, 'utf-8');
     const parsed = parse(grammar, source, grammarFile);
 
-    // for (let i = 0; i < 100000; ++i) {
+    // for (let i = 0; i < 10_000; ++i) {
     //     parse(grammar, source, grammarFile);
     // }
 

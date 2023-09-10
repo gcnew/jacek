@@ -53,7 +53,7 @@ function compileRx(pattern: string, idx: number) {
     }
 
     const $${idx} = ${tmp(idx)}[0];
-    end += $${idx}.length;`
+    const $end${idx} = end += $${idx}.length;`
 }
 
 function compileLiteral(literal: string, idx: number) {
@@ -63,7 +63,7 @@ function compileLiteral(literal: string, idx: number) {
         return { kind: 'left', value: { kind: 'no_match', expected: $${idx}, idx: end } } as const;
     }
 
-    end += $${idx}.length;`
+    const $end${idx} = end += $${idx}.length;`
 }
 
 function compileLexLiteral(macro: { prefix: string, lit: string }, idx: number) {
@@ -92,7 +92,7 @@ function compileAny(idx: number) {
         return { kind: 'left', value: { kind: 'no_match', expected: '<any>', idx: end } } as const;
     }
     const $${idx} = input[end];
-    end++;`;
+    const $end${idx} = end++;`;
 }
 
 function compileNot(pattern: string, scope: Scope, idx: number): string {
@@ -108,7 +108,7 @@ function compileNot(pattern: string, scope: Scope, idx: number): string {
         return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
     }
     const $${idx} = input[end];
-    end++;`;
+    const $end${idx} = end++;`;
 }
 
 function compileLook(pattern: string, scope: Scope, idx: number): string {
@@ -221,13 +221,14 @@ function compilePattern(pattern: string, scope: Scope, idx: number) {
         $${idx} = undefined;
     } else {
         $${idx} = ${tmp(idx)}.value;
-    }`;
+    }
+    const $end${idx} = end;`;
     }
 
     if (modifier === '*') {
     return `
     ${cc(code, idx)}
-    let $${idx} = [];
+    const $${idx} = [];
     while (true) {
         const ${tmp(idx)} = $cc${idx}(input, end);
         if (${tmp(idx)}.kind === 'left') {
@@ -237,7 +238,8 @@ function compilePattern(pattern: string, scope: Scope, idx: number) {
             break;
         }
         $${idx}.push(${tmp(idx)}.value);
-    }`;
+    }
+    const $end${idx} = end;`;
     }
 
     if (modifier === '+') {
@@ -247,7 +249,7 @@ function compilePattern(pattern: string, scope: Scope, idx: number) {
     if (${tmp(idx)}_1.kind === 'left') {
         return ${tmp(idx)}_1;
     }
-    let $${idx} = [ ${tmp(idx)}_1.value ];
+    const $${idx} = [ ${tmp(idx)}_1.value ];
     while (true) {
         const ${tmp(idx)} = $cc${idx}(input, end);
         if (${tmp(idx)}.kind === 'left') {
@@ -257,7 +259,8 @@ function compilePattern(pattern: string, scope: Scope, idx: number) {
             break;
         }
         $${idx}.push(${tmp(idx)}.value);
-    }`;
+    }
+    const $end${idx} = end;`;
     }
 
     throw 'fail: whooops!';
@@ -330,7 +333,7 @@ function compileGroup(pattern: string, scope: Scope, idx: number): string {
 }
 
 function compileAlternative(alt: string, scope: Scope) {
-    const [seq, mapper] = alt
+    const [seq, mapper0] = alt
         .replace(/(\\)?\n\s*(%% )?/g, '\n')
         .split(/ *%% */);
 
@@ -338,13 +341,16 @@ function compileAlternative(alt: string, scope: Scope) {
         .map((pat, idx) => compilePattern(pat, scope, idx))
         .join('\n');
 
+    const mapper = (mapper0 || '$0')
+        .replace(/\B\$start(\d+)\b/g, (_, idx) => idx === '0' ? 'start' : `$end${Number(idx) - 1}`);
+
     return `
     let end = start;
 
     ${code}
 
     const text = () => input.substring(start, end);
-    const $mapped = ${mapper || '$0'};
+    const $mapped = ${mapper};
     return { kind: 'right', value: [ end, $mapped ] } as const;`;
 }
 
@@ -504,12 +510,12 @@ function compileGrammar(g: string, options: Options) {
 
     const matchedRules = g
         .replaceAll(/%\{(.*?)\}%/gs, '')                                 // remove the pasta
-        .replaceAll(/--.*/g, '')                                         // remove comments
+        .replaceAll(/^#.*/mg, '')                                        // remove comments
         .matchAll(/(((\w+)?`\w+`|\w+)(:\s*(\w+))?\s*=.+?)\s+;/gs);
 
     const left = g
         .replaceAll(/%\{(.*?)\}%/gs, '')                                 // remove the pasta
-        .replaceAll(/--.*/g, '')                                         // remove comments
+        .replaceAll(/^#.*/gm, '')                                        // remove comments
         .replaceAll(/(((\w+)?`\w+`|\w+)(:\s*(\w+))?\s*=.+?)\s+;/gs, '')  // remove the rules
         .trim();
     if (left) {

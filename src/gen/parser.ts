@@ -116,7 +116,7 @@ function lit_macro<S extends string>(lit: S, input: string, start: number) {
         return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
     }
 
-    end += $0.length;
+    const $end0 = end += $0.length;
 
     const $tmp$1 = ws(input, end);
     if ($tmp$1.kind === 'left') {
@@ -136,14 +136,14 @@ export function ws(input: string, start: number) {
     let end = start;
 
     
-    const $tmp$0 = /^\s*/.exec(input.substring(end));
+    const $tmp$0 = /^(\s|#.*)*/.exec(input.substring(end));
 
     if (!$tmp$0) {
-        return { kind: 'left', value: { kind: 'no_match', expected: /\s*/, idx: end } } as const;
+        return { kind: 'left', value: { kind: 'no_match', expected: /(\s|#.*)*/, idx: end } } as const;
     }
 
     const $0 = $tmp$0[0];
-    end += $0.length;
+    const $end0 = end += $0.length;
 
     const text = () => input.substring(start, end);
     const $mapped = $0;
@@ -163,7 +163,7 @@ export function id(input: string, start: number) {
     }
 
     const $0 = $tmp$0[0];
-    end += $0.length;
+    const $end0 = end += $0.length;
 
     const $tmp$1 = ws(input, end);
     if ($tmp$1.kind === 'left') {
@@ -178,185 +178,57 @@ export function id(input: string, start: number) {
 }
 
 
-export function literalPart(input: string, start: number) {
-    
-    let end = start;
-    
-    const $cc0 = (input: string, start: number) => {
-        
-        let end = start;
-
-        
-        const $0 = '\\\'';
-        if (!input.startsWith($0, end)) {
-            return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
-        }
-
-        end += $0.length;
-
-        const text = () => input.substring(start, end);
-        const $mapped = '\'';
-        return { kind: 'right', value: [ end, $mapped ] } as const;
-    };
-    const $tmp$0 = $cc0(input, start);
-    if ($tmp$0.kind === 'right') {
-        return $tmp$0;
-    }
-    if ($tmp$0.kind === 'left' && !($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
-        return $tmp$0;
-    }
-
-    const $cc1 = (input: string, start: number) => {
-        
-        let end = start;
-
-        
-        const $cc0 = (input: string, start: number, end: number) => {
-            
-            const $0 = '\'';
-            if (!input.startsWith($0, end)) {
-                return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
-            }
-
-            end += $0.length;
-            return { kind: 'right', value: $0 } as const;
-        };
-        if ($cc0(input, end, end).kind === 'right') {
-            return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
-        }
-        if (input.length === end) {
-            return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
-        }
-        const $0 = input[end];
-        end++;
-
-        const text = () => input.substring(start, end);
-        const $mapped = $0;
-        return { kind: 'right', value: [ end, $mapped ] } as const;
-    };
-    const $tmp$1 = $cc1(input, start);
-    if ($tmp$1.kind === 'right') {
-        return $tmp$1;
-    }
-    if ($tmp$1.kind === 'left' && !($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
-        return $tmp$1;
-    }
-    return $tmp$1;
-}
-
-
 export function literal(input: string, start: number) {
     
     let end = start;
 
     
-    const $0 = '\'';
-    if (!input.startsWith($0, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
+    const $tmp$0 = /^'(\\'|[^'])+?'/.exec(input.substring(end));
+
+    if (!$tmp$0) {
+        return { kind: 'left', value: { kind: 'no_match', expected: /'(\\'|[^'])+?'/, idx: end } } as const;
     }
 
-    end += $0.length;
+    const $0 = $tmp$0[0];
+    const $end0 = end += $0.length;
 
-    
-    const $cc1 = (input: string, start: number) => {
-        
-        const $tmp$1 = literalPart(input, end);
-        if ($tmp$1.kind === 'left') {
-            return $tmp$1;
-        }
-        const [$end1, $1] = $tmp$1.value;
-        end = $end1;
-        return { kind: 'right', value: $1 } as const;
-    };
-    let $1 = [];
-    while (true) {
-        const $tmp$1 = $cc1(input, end);
-        if ($tmp$1.kind === 'left') {
-            if (!($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
-                return $tmp$1;
-            }
-            break;
-        }
-        $1.push($tmp$1.value);
+    const $tmp$1 = ws(input, end);
+    if ($tmp$1.kind === 'left') {
+        return $tmp$1;
     }
-
-    const $tmp$2 = lit_macro(`'`, input, end);
-    if ($tmp$2.kind === 'left') {
-        return $tmp$2;
-    }
-    const [$end2, $2] = $tmp$2.value;
-    end = $end2;
+    const [$end1, $1] = $tmp$1.value;
+    end = $end1;
 
     const text = () => input.substring(start, end);
-    const $mapped = mkLiteral(start, $2.end, $1.join(''));
+    const $mapped = mkLiteral(start, $end0, $0.slice(1, -1));
     return { kind: 'right', value: [ end, $mapped ] } as const;
 }
 
 
-export function templatePart(input: string, start: number) {
+export function templateBody(input: string, start: number) {
     
     let end = start;
+
     
-    const $cc0 = (input: string, start: number) => {
-        
-        let end = start;
+    const $tmp$0 = /^`(\\`|[^`])+?`/.exec(input.substring(end));
 
-        
-        const $0 = '\\`';
-        if (!input.startsWith($0, end)) {
-            return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
-        }
-
-        end += $0.length;
-
-        const text = () => input.substring(start, end);
-        const $mapped = '`';
-        return { kind: 'right', value: [ end, $mapped ] } as const;
-    };
-    const $tmp$0 = $cc0(input, start);
-    if ($tmp$0.kind === 'right') {
-        return $tmp$0;
-    }
-    if ($tmp$0.kind === 'left' && !($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
-        return $tmp$0;
+    if (!$tmp$0) {
+        return { kind: 'left', value: { kind: 'no_match', expected: /`(\\`|[^`])+?`/, idx: end } } as const;
     }
 
-    const $cc1 = (input: string, start: number) => {
-        
-        let end = start;
+    const $0 = $tmp$0[0];
+    const $end0 = end += $0.length;
 
-        
-        const $cc0 = (input: string, start: number, end: number) => {
-            
-            const $0 = '`';
-            if (!input.startsWith($0, end)) {
-                return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
-            }
-
-            end += $0.length;
-            return { kind: 'right', value: $0 } as const;
-        };
-        if ($cc0(input, end, end).kind === 'right') {
-            return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
-        }
-        if (input.length === end) {
-            return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
-        }
-        const $0 = input[end];
-        end++;
-
-        const text = () => input.substring(start, end);
-        const $mapped = $0;
-        return { kind: 'right', value: [ end, $mapped ] } as const;
-    };
-    const $tmp$1 = $cc1(input, start);
-    if ($tmp$1.kind === 'right') {
+    const $tmp$1 = ws(input, end);
+    if ($tmp$1.kind === 'left') {
         return $tmp$1;
     }
-    if ($tmp$1.kind === 'left' && !($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
-        return $tmp$1;
-    }
-    return $tmp$1;
+    const [$end1, $1] = $tmp$1.value;
+    end = $end1;
+
+    const text = () => input.substring(start, end);
+    const $mapped = { text: $0.slice(1, -1), start, end: $end0 };
+    return { kind: 'right', value: [ end, $mapped ] } as const;
 }
 
 
@@ -406,114 +278,18 @@ export function template(input: string, start: number) {
     } else {
         $0 = $tmp$0.value;
     }
+    const $end0 = end;
 
-    const $1 = '`';
-    if (!input.startsWith($1, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $1, idx: end } } as const;
+    const $tmp$1 = templateBody(input, end);
+    if ($tmp$1.kind === 'left') {
+        return $tmp$1;
     }
-
-    end += $1.length;
-
-    
-    const $cc2 = (input: string, start: number) => {
-        
-        const $tmp$2 = templatePart(input, end);
-        if ($tmp$2.kind === 'left') {
-            return $tmp$2;
-        }
-        const [$end2, $2] = $tmp$2.value;
-        end = $end2;
-        return { kind: 'right', value: $2 } as const;
-    };
-    let $2 = [];
-    while (true) {
-        const $tmp$2 = $cc2(input, end);
-        if ($tmp$2.kind === 'left') {
-            if (!($tmp$2.value.kind === 'no_match' && $tmp$2.value.idx === end)) {
-                return $tmp$2;
-            }
-            break;
-        }
-        $2.push($tmp$2.value);
-    }
-
-    const $tmp$3 = lit_macro(`\``, input, end);
-    if ($tmp$3.kind === 'left') {
-        return $tmp$3;
-    }
-    const [$end3, $3] = $tmp$3.value;
-    end = $end3;
+    const [$end1, $1] = $tmp$1.value;
+    end = $end1;
 
     const text = () => input.substring(start, end);
-    const $mapped = mkTemplate(start, $3.end, $0, $2.join(''));
+    const $mapped = mkTemplate(start, $1.end, $0, $1.text);
     return { kind: 'right', value: [ end, $mapped ] } as const;
-}
-
-
-export function rxPart(input: string, start: number) {
-    
-    let end = start;
-    
-    const $cc0 = (input: string, start: number) => {
-        
-        let end = start;
-
-        
-        const $0 = '\\/';
-        if (!input.startsWith($0, end)) {
-            return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
-        }
-
-        end += $0.length;
-
-        const text = () => input.substring(start, end);
-        const $mapped = $0;
-        return { kind: 'right', value: [ end, $mapped ] } as const;
-    };
-    const $tmp$0 = $cc0(input, start);
-    if ($tmp$0.kind === 'right') {
-        return $tmp$0;
-    }
-    if ($tmp$0.kind === 'left' && !($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
-        return $tmp$0;
-    }
-
-    const $cc1 = (input: string, start: number) => {
-        
-        let end = start;
-
-        
-        const $cc0 = (input: string, start: number, end: number) => {
-            
-            const $0 = '/';
-            if (!input.startsWith($0, end)) {
-                return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
-            }
-
-            end += $0.length;
-            return { kind: 'right', value: $0 } as const;
-        };
-        if ($cc0(input, end, end).kind === 'right') {
-            return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
-        }
-        if (input.length === end) {
-            return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
-        }
-        const $0 = input[end];
-        end++;
-
-        const text = () => input.substring(start, end);
-        const $mapped = $0;
-        return { kind: 'right', value: [ end, $mapped ] } as const;
-    };
-    const $tmp$1 = $cc1(input, start);
-    if ($tmp$1.kind === 'right') {
-        return $tmp$1;
-    }
-    if ($tmp$1.kind === 'left' && !($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
-        return $tmp$1;
-    }
-    return $tmp$1;
 }
 
 
@@ -531,7 +307,7 @@ export function rxModifier(input: string, start: number) {
             return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
         }
 
-        end += $0.length;
+        const $end0 = end += $0.length;
 
         const text = () => input.substring(start, end);
         const $mapped = $0;
@@ -555,7 +331,7 @@ export function rxModifier(input: string, start: number) {
             return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
         }
 
-        end += $0.length;
+        const $end0 = end += $0.length;
 
         const text = () => input.substring(start, end);
         const $mapped = $0;
@@ -577,17 +353,19 @@ export function regex(input: string, start: number) {
     let end = start;
 
     
-    const $0 = '/';
-    if (!input.startsWith($0, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
+    const $tmp$0 = /^\/(\\\/|[^\/])+?\//.exec(input.substring(end));
+
+    if (!$tmp$0) {
+        return { kind: 'left', value: { kind: 'no_match', expected: /\/(\\\/|[^\/])+?\//, idx: end } } as const;
     }
 
-    end += $0.length;
+    const $0 = $tmp$0[0];
+    const $end0 = end += $0.length;
 
     
     const $cc1 = (input: string, start: number) => {
         
-        const $tmp$1 = rxPart(input, end);
+        const $tmp$1 = rxModifier(input, end);
         if ($tmp$1.kind === 'left') {
             return $tmp$1;
         }
@@ -595,7 +373,7 @@ export function regex(input: string, start: number) {
         end = $end1;
         return { kind: 'right', value: $1 } as const;
     };
-    let $1 = [];
+    const $1 = [];
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
@@ -606,46 +384,17 @@ export function regex(input: string, start: number) {
         }
         $1.push($tmp$1.value);
     }
+    const $end1 = end;
 
-    const $2 = '/';
-    if (!input.startsWith($2, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $2, idx: end } } as const;
+    const $tmp$2 = ws(input, end);
+    if ($tmp$2.kind === 'left') {
+        return $tmp$2;
     }
-
-    end += $2.length;
-
-    
-    const $cc3 = (input: string, start: number) => {
-        
-        const $tmp$3 = rxModifier(input, end);
-        if ($tmp$3.kind === 'left') {
-            return $tmp$3;
-        }
-        const [$end3, $3] = $tmp$3.value;
-        end = $end3;
-        return { kind: 'right', value: $3 } as const;
-    };
-    let $3 = [];
-    while (true) {
-        const $tmp$3 = $cc3(input, end);
-        if ($tmp$3.kind === 'left') {
-            if (!($tmp$3.value.kind === 'no_match' && $tmp$3.value.idx === end)) {
-                return $tmp$3;
-            }
-            break;
-        }
-        $3.push($tmp$3.value);
-    }
-
-    const $tmp$4 = ws(input, end);
-    if ($tmp$4.kind === 'left') {
-        return $tmp$4;
-    }
-    const [$end4, $4] = $tmp$4.value;
-    end = $end4;
+    const [$end2, $2] = $tmp$2.value;
+    end = $end2;
 
     const text = () => input.substring(start, end);
-    const $mapped = mkRegexp(start, end - $4.length, text().slice(0, -$4.length));
+    const $mapped = mkRegexp(start, $end1, text().slice(0, -$2.length));
     return { kind: 'right', value: [ end, $mapped ] } as const;
 }
 
@@ -854,7 +603,7 @@ export function variable(input: string, start: number) {
         return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
     }
 
-    end += $0.length;
+    const $end0 = end += $0.length;
 
     const $tmp$1 = /^\d+/.exec(input.substring(end));
 
@@ -863,7 +612,7 @@ export function variable(input: string, start: number) {
     }
 
     const $1 = $tmp$1[0];
-    end += $1.length;
+    const $end1 = end += $1.length;
 
     const $tmp$2 = ws(input, end);
     if ($tmp$2.kind === 'left') {
@@ -873,7 +622,7 @@ export function variable(input: string, start: number) {
     end = $end2;
 
     const text = () => input.substring(start, end);
-    const $mapped = mkVariable(start, start + $1.length + 1, $1);
+    const $mapped = mkVariable(start, $end1, $1);
     return { kind: 'right', value: [ end, $mapped ] } as const;
 }
 
@@ -1039,7 +788,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
                         return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
                     }
 
-                    end += $0.length;
+                    const $end0 = end += $0.length;
                     return { kind: 'right', value: $0 } as const;
                 };
                 let $0;
@@ -1052,6 +801,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
                 } else {
                     $0 = $tmp$0.value;
                 }
+                const $end0 = end;
 
                 const $tmp$1 = rep(input, end);
                 if ($tmp$1.kind === 'left') {
@@ -1074,7 +824,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
         if ($tmp$1_1.kind === 'left') {
             return $tmp$1_1;
         }
-        let $1 = [ $tmp$1_1.value ];
+        const $1 = [ $tmp$1_1.value ];
         while (true) {
             const $tmp$1 = $cc1(input, end);
             if ($tmp$1.kind === 'left') {
@@ -1085,6 +835,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
             }
             $1.push($tmp$1.value);
         }
+        const $end1 = end;
 
         const $tmp$2 = lit_macro(`)`, input, end);
         if ($tmp$2.kind === 'left') {
@@ -1138,6 +889,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
         } else {
             $1 = $tmp$1.value;
         }
+        const $end1 = end;
 
         const text = () => input.substring(start, end);
         const $mapped = $1 ? mkApply($1.end, $0, $1.pattern) : $0;
@@ -1266,6 +1018,7 @@ export function rep(input: string, start: number) {
     } else {
         $1 = $tmp$1.value;
     }
+    const $end1 = end;
 
     const text = () => input.substring(start, end);
     const $mapped = mkRep($0, $1);
@@ -1278,40 +1031,14 @@ export function mapperText(input: string, start: number) {
     let end = start;
 
     
-    
-    const $cc0 = (input: string, start: number) => {
-        
-        const $cc0 = (input: string, start: number, end: number) => {
-            
-            const $0 = '\n';
-            if (!input.startsWith($0, end)) {
-                return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
-            }
+    const $tmp$0 = /^[^\n]+?\n/.exec(input.substring(end));
 
-            end += $0.length;
-            return { kind: 'right', value: $0 } as const;
-        };
-        if ($cc0(input, end, end).kind === 'right') {
-            return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
-        }
-        if (input.length === end) {
-            return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
-        }
-        const $0 = input[end];
-        end++;
-        return { kind: 'right', value: $0 } as const;
-    };
-    let $0 = [];
-    while (true) {
-        const $tmp$0 = $cc0(input, end);
-        if ($tmp$0.kind === 'left') {
-            if (!($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
-                return $tmp$0;
-            }
-            break;
-        }
-        $0.push($tmp$0.value);
+    if (!$tmp$0) {
+        return { kind: 'left', value: { kind: 'no_match', expected: /[^\n]+?\n/, idx: end } } as const;
     }
+
+    const $0 = $tmp$0[0];
+    const $end0 = end += $0.length;
 
     const text = () => input.substring(start, end);
     const $mapped = mkText(start, end, text().trim());
@@ -1336,7 +1063,7 @@ export function mapper(input: string, start: number) {
                 return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
             }
 
-            end += $0.length;
+            const $end0 = end += $0.length;
 
             const $tmp$1 = mapperText(input, end);
             if ($tmp$1.kind === 'left') {
@@ -1362,7 +1089,7 @@ export function mapper(input: string, start: number) {
         end = $end0;
         return { kind: 'right', value: $0 } as const;
     };
-    let $0 = [];
+    const $0 = [];
     while (true) {
         const $tmp$0 = $cc0(input, end);
         if ($tmp$0.kind === 'left') {
@@ -1373,6 +1100,7 @@ export function mapper(input: string, start: number) {
         }
         $0.push($tmp$0.value);
     }
+    const $end0 = end;
 
     const text = () => input.substring(start, end);
     const $mapped = $0.length
@@ -1402,7 +1130,7 @@ export function alternative(input: string, start: number) {
     if ($tmp$0_1.kind === 'left') {
         return $tmp$0_1;
     }
-    let $0 = [ $tmp$0_1.value ];
+    const $0 = [ $tmp$0_1.value ];
     while (true) {
         const $tmp$0 = $cc0(input, end);
         if ($tmp$0.kind === 'left') {
@@ -1413,6 +1141,7 @@ export function alternative(input: string, start: number) {
         }
         $0.push($tmp$0.value);
     }
+    const $end0 = end;
 
     
     const $cc1 = (input: string, start: number) => {
@@ -1435,6 +1164,7 @@ export function alternative(input: string, start: number) {
     } else {
         $1 = $tmp$1.value;
     }
+    const $end1 = end;
 
     const $tmp$2 = ws(input, end);
     if ($tmp$2.kind === 'left') {
@@ -1492,7 +1222,7 @@ export function alternatives(input: string, start: number) {
         end = $end1;
         return { kind: 'right', value: $1 } as const;
     };
-    let $1 = [];
+    const $1 = [];
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
@@ -1503,6 +1233,7 @@ export function alternatives(input: string, start: number) {
         }
         $1.push($tmp$1.value);
     }
+    const $end1 = end;
 
     const text = () => input.substring(start, end);
     const $mapped = [ $0, ...$1 ];
@@ -1561,13 +1292,14 @@ export function templateDef(input: string, start: number) {
     } else {
         $0 = $tmp$0.value;
     }
+    const $end0 = end;
 
     const $1 = '`';
     if (!input.startsWith($1, end)) {
         return { kind: 'left', value: { kind: 'no_match', expected: $1, idx: end } } as const;
     }
 
-    end += $1.length;
+    const $end1 = end += $1.length;
 
     const $tmp$2 = id(input, end);
     if ($tmp$2.kind === 'left') {
@@ -1581,7 +1313,7 @@ export function templateDef(input: string, start: number) {
         return { kind: 'left', value: { kind: 'no_match', expected: $3, idx: end } } as const;
     }
 
-    end += $3.length;
+    const $end3 = end += $3.length;
 
     const $tmp$4 = ws(input, end);
     if ($tmp$4.kind === 'left') {
@@ -1643,6 +1375,7 @@ export function rule(input: string, start: number) {
         } else {
             $1 = $tmp$1.value;
         }
+        const $end1 = end;
 
         const $tmp$2 = lit_macro(`=`, input, end);
         if ($tmp$2.kind === 'left') {
@@ -1710,6 +1443,7 @@ export function rule(input: string, start: number) {
         } else {
             $1 = $tmp$1.value;
         }
+        const $end1 = end;
 
         const $tmp$2 = lit_macro(`=`, input, end);
         if ($tmp$2.kind === 'left') {
@@ -1747,61 +1481,29 @@ export function rule(input: string, start: number) {
 }
 
 
-export function pastaText(input: string, start: number) {
-    
-    let end = start;
-
-    
-    const $tmp$0 = /^.+?(?=}%)/s.exec(input.substring(end));
-
-    if (!$tmp$0) {
-        return { kind: 'left', value: { kind: 'no_match', expected: /.+?(?=}%)/s, idx: end } } as const;
-    }
-
-    const $0 = $tmp$0[0];
-    end += $0.length;
-
-    const text = () => input.substring(start, end);
-    const $mapped = mkText(start, end, text());
-    return { kind: 'right', value: [ end, $mapped ] } as const;
-}
-
-
 export function pasta(input: string, start: number) {
     
     let end = start;
 
     
-    const $0 = '%\{';
-    if (!input.startsWith($0, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
+    const $tmp$0 = /^%\{.+?}%/s.exec(input.substring(end));
+
+    if (!$tmp$0) {
+        return { kind: 'left', value: { kind: 'no_match', expected: /%\{.+?}%/s, idx: end } } as const;
     }
 
-    end += $0.length;
+    const $0 = $tmp$0[0];
+    const $end0 = end += $0.length;
 
-    const $tmp$1 = pastaText(input, end);
+    const $tmp$1 = ws(input, end);
     if ($tmp$1.kind === 'left') {
         return $tmp$1;
     }
     const [$end1, $1] = $tmp$1.value;
     end = $end1;
 
-    const $2 = '}%';
-    if (!input.startsWith($2, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $2, idx: end } } as const;
-    }
-
-    end += $2.length;
-
-    const $tmp$3 = ws(input, end);
-    if ($tmp$3.kind === 'left') {
-        return $tmp$3;
-    }
-    const [$end3, $3] = $tmp$3.value;
-    end = $end3;
-
     const text = () => input.substring(start, end);
-    const $mapped = mkPasta($1);
+    const $mapped = mkPasta(mkText(start + 2, $end0 - 2, $0.slice(2, -2)));
     return { kind: 'right', value: [ end, $mapped ] } as const;
 }
 
@@ -1818,7 +1520,7 @@ export function eof(input: string, start: number) {
     }
 
     const $0 = $tmp$0[0];
-    end += $0.length;
+    const $end0 = end += $0.length;
 
     const text = () => input.substring(start, end);
     const $mapped = $0;
@@ -1849,7 +1551,7 @@ export function grammar(input: string, start: number) {
         end = $end1;
         return { kind: 'right', value: $1 } as const;
     };
-    let $1 = [];
+    const $1 = [];
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
@@ -1860,6 +1562,7 @@ export function grammar(input: string, start: number) {
         }
         $1.push($tmp$1.value);
     }
+    const $end1 = end;
 
     
     const $cc2 = (input: string, start: number) => {
@@ -1872,7 +1575,7 @@ export function grammar(input: string, start: number) {
         end = $end2;
         return { kind: 'right', value: $2 } as const;
     };
-    let $2 = [];
+    const $2 = [];
     while (true) {
         const $tmp$2 = $cc2(input, end);
         if ($tmp$2.kind === 'left') {
@@ -1883,6 +1586,7 @@ export function grammar(input: string, start: number) {
         }
         $2.push($tmp$2.value);
     }
+    const $end2 = end;
 
     const $tmp$3 = ws(input, end);
     if ($tmp$3.kind === 'left') {
