@@ -228,7 +228,7 @@ function compilePattern(pattern: string, scope: Scope, idx: number) {
     if (modifier === '*') {
     return `
     ${cc(code, idx)}
-    const $${idx} = [];
+    const $${idx}: Extract<ReturnType<typeof $cc${idx}>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const ${tmp(idx)} = $cc${idx}(input, end);
         if (${tmp(idx)}.kind === 'left') {

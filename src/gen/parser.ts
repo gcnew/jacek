@@ -373,7 +373,7 @@ export function regex(input: string, start: number) {
         end = $end1;
         return { kind: 'right', value: $1 } as const;
     };
-    const $1 = [];
+    const $1: Extract<ReturnType<typeof $cc1>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
@@ -1089,7 +1089,7 @@ export function mapper(input: string, start: number) {
         end = $end0;
         return { kind: 'right', value: $0 } as const;
     };
-    const $0 = [];
+    const $0: Extract<ReturnType<typeof $cc0>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$0 = $cc0(input, end);
         if ($tmp$0.kind === 'left') {
@@ -1222,7 +1222,7 @@ export function alternatives(input: string, start: number) {
         end = $end1;
         return { kind: 'right', value: $1 } as const;
     };
-    const $1 = [];
+    const $1: Extract<ReturnType<typeof $cc1>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
@@ -1551,7 +1551,7 @@ export function grammar(input: string, start: number) {
         end = $end1;
         return { kind: 'right', value: $1 } as const;
     };
-    const $1 = [];
+    const $1: Extract<ReturnType<typeof $cc1>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
@@ -1575,7 +1575,7 @@ export function grammar(input: string, start: number) {
         end = $end2;
         return { kind: 'right', value: $2 } as const;
     };
-    const $2 = [];
+    const $2: Extract<ReturnType<typeof $cc2>, { kind: 'right' }>['value'][] = [];
     while (true) {
         const $tmp$2 = $cc2(input, end);
         if ($tmp$2.kind === 'left') {

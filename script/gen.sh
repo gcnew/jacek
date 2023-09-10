@@ -14,12 +14,12 @@ GREEN='\033[0;32m'
     node built/bootstrap/main.js resources/grammar.g > src/gen/parser.ts
 
     tsc
-    node built/main.js resources/grammar.g > src/gen/parser2.ts
+    node built/src/main.js resources/grammar.g > src/gen/parser2.ts
 
     tsc
-    mv built/gen/parser.js built/gen/parserB.js
-    mv built/gen/parser2.js built/gen/parser.js
-    node built/main.js resources/grammar.g > src/gen/parser3.ts
+    mv built/src/gen/parser.js built/src/gen/parserB.js
+    mv built/src/gen/parser2.js built/src/gen/parser.js
+    node built/src/main.js resources/grammar.g > src/gen/parser3.ts
 
     diff src/gen/parser2.ts src/gen/parser3.ts > /dev/null
     rm src/gen/parser2.ts src/gen/parser3.ts

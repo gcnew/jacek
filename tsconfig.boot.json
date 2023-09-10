@@ -1,12 +1,10 @@
 {
-    "extends": "./tsconfig.json",
+    "extends": "./tsconfig.base.json",
 
     "compilerOptions": {
         "strict": true,
         "outDir": "built/bootstrap"
     },
-
-    "include": [],
 
     "files": [
         "src/bootstrap/main.ts"

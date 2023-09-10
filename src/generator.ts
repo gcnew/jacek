@@ -5,7 +5,7 @@ import type {
 
 import * as fs from 'fs';
 
-const prelude = fs.readFileSync(require.resolve('../src/prelude.ts'), 'utf8');
+const prelude = fs.readFileSync(require.resolve('../../src/prelude.ts'), 'utf8');
 
 export function generate(g: Grammar) {
     const pasta = g.pasta
