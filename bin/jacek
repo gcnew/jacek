@@ -2,7 +2,11 @@
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -36,8 +40,8 @@ function main() {
 function tmp(idx) {
     return '$tmp$' + idx;
 }
-function isLook(idx) {
-    return `${tmp(idx)}.value.kind === 'no_match' && ${tmp(idx)}.value.idx === end`;
+function hasConsumed(idx) {
+    return `${tmp(idx)}.value.idx !== end`;
 }
 function cc(code, idx) {
     return `
@@ -51,20 +55,20 @@ function compileRx(pattern, idx) {
     const ${tmp(idx)} = /^${pattern.substr(1)}.exec(input.substring(end));
 
     if (!${tmp(idx)}) {
-        return { kind: 'left', value: { kind: 'no_match', expected: ${pattern}, idx: end } } as const;
+        return { kind: 'left', value: { expected: ${pattern}, idx: end } } as const;
     }
 
     const $${idx} = ${tmp(idx)}[0];
-    end += $${idx}.length;`;
+    const $end${idx} = end += $${idx}.length;`;
 }
 function compileLiteral(literal, idx) {
     return `
     const $${idx} = ${literal};
     if (!input.startsWith($${idx}, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $${idx}, idx: end } } as const;
+        return { kind: 'left', value: { expected: $${idx}, idx: end } } as const;
     }
 
-    end += $${idx}.length;`;
+    const $end${idx} = end += $${idx}.length;`;
 }
 function compileLexLiteral(macro, idx) {
     return `
@@ -87,10 +91,10 @@ function compileRuleInvokation(rule, idx) {
 function compileAny(idx) {
     return `
     if (input.length === end) {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<any>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<any>', idx: end } } as const;
     }
     const $${idx} = input[end];
-    end++;`;
+    const $end${idx} = end++;`;
 }
 function compileNot(pattern, scope, idx) {
     return `
@@ -99,13 +103,13 @@ function compileNot(pattern, scope, idx) {
         return { kind: 'right', value: $${idx} } as const;
     };
     if ($cc${idx}(input, end, end).kind === 'right') {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<not>', idx: end } } as const;
     }
     if (input.length === end) {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<not>', idx: end } } as const;
     }
     const $${idx} = input[end];
-    end++;`;
+    const $end${idx} = end++;`;
 }
 function compileLook(pattern, scope, idx) {
     return `
@@ -115,7 +119,7 @@ function compileLook(pattern, scope, idx) {
     };
     const ${tmp(idx)} = $cc${idx}(input, end, end);
     if (${tmp(idx)}.kind === 'left') {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<look>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<look>', idx: end } } as const;
     }
     const $${idx} = ${tmp(idx)}.value[1];`;
 }
@@ -127,7 +131,7 @@ function compileTry(pattern, scope, idx) {
     };
     const ${tmp(idx)} = $cc${idx}(input, end, end);
     if (${tmp(idx)}.kind === 'left') {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<try>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<try>', idx: end } } as const;
     }
     const [$end${idx}, $${idx}] = ${tmp(idx)}.value;
     end = $end${idx};`;
@@ -140,7 +144,7 @@ function compileBacktrack(pattern, scope, idx) {
     };
     const ${tmp(idx)} = $cc${idx}(input.slice(0, end).split('').reverse().join(''), 0, 0);
     if (${tmp(idx)}.kind === 'left') {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<backtrack>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<backtrack>', idx: end } } as const;
     }
     const [$end${idx}, $${idx}] = ${tmp(idx)}.value;
     end = end - $end${idx};`;
@@ -196,28 +200,30 @@ function compilePattern(pattern, scope, idx) {
     let $${idx};
     const ${tmp(idx)} = $cc${idx}(input, end);
     if (${tmp(idx)}.kind === 'left') {
-        if (!(${isLook(idx)})) {
+        if (${hasConsumed(idx)}) {
             return ${tmp(idx)};
         }
         $${idx} = undefined;
     } else {
         $${idx} = ${tmp(idx)}.value;
-    }`;
+    }
+    const $end${idx} = end;`;
     }
     if (modifier === '*') {
         return `
     ${cc(code, idx)}
-    let $${idx} = [];
+    const $${idx} = [];
     while (true) {
         const ${tmp(idx)} = $cc${idx}(input, end);
         if (${tmp(idx)}.kind === 'left') {
-            if (!(${isLook(idx)})) {
+            if (${hasConsumed(idx)}) {
                 return ${tmp(idx)};
             }
             break;
         }
         $${idx}.push(${tmp(idx)}.value);
-    }`;
+    }
+    const $end${idx} = end;`;
     }
     if (modifier === '+') {
         return `
@@ -226,17 +232,18 @@ function compilePattern(pattern, scope, idx) {
     if (${tmp(idx)}_1.kind === 'left') {
         return ${tmp(idx)}_1;
     }
-    let $${idx} = [ ${tmp(idx)}_1.value ];
+    const $${idx} = [ ${tmp(idx)}_1.value ];
     while (true) {
         const ${tmp(idx)} = $cc${idx}(input, end);
         if (${tmp(idx)}.kind === 'left') {
-            if (!(${isLook(idx)})) {
+            if (${hasConsumed(idx)}) {
                 return ${tmp(idx)};
             }
             break;
         }
         $${idx}.push(${tmp(idx)}.value);
-    }`;
+    }
+    const $end${idx} = end;`;
     }
     throw 'fail: whooops!';
 }
@@ -251,8 +258,8 @@ function revertSubPatterns(pattern, map) {
 function splitSequence(seq) {
     const subPatterns = new Map();
     return seq
-        .replace(/\B('[^']+?')\B/g, x => addSubPattern(x, subPatterns)) // save 'string'
-        .replace(/\B(`[^`]+?`)\B/g, x => addSubPattern(x, subPatterns)) // save `string`
+        .replace(/\B('(\\'|[^'])+?')\B/g, x => addSubPattern(x, subPatterns)) // save 'string'
+        .replace(/\B(`(\\`|[^`])+?`)\B/g, x => addSubPattern(x, subPatterns)) // save `string`
         .replace(/\B(\/[^/]+?\/)(\B|\b)/g, x => addSubPattern(x, subPatterns)) // save /regexp/
         .replace(/\B(\([^\)]+?\))\B/g, x => addSubPattern(x, subPatterns)) // save (group)
         .split(/ +/)
@@ -294,19 +301,21 @@ function compileGroup(pattern, scope, idx) {
     ${compileRuleInvokation(`$cc${idx}`, idx)}`;
 }
 function compileAlternative(alt, scope) {
-    const [seq, mapper] = alt
-        .replace(/(\\)?\n\s* %% /g, '\n')
+    const [seq, mapper0] = alt
+        .replace(/(\\)?\n\s*(%% )?/g, '\n')
         .split(/ *%% */);
     const code = splitSequence(seq)
         .map((pat, idx) => compilePattern(pat, scope, idx))
         .join('\n');
+    const mapper = (mapper0 || '$0')
+        .replace(/\B\$start(\d+)\b/g, (_, idx) => idx === '0' ? 'start' : `$end${Number(idx) - 1}`);
     return `
     let end = start;
 
     ${code}
 
     const text = () => input.substring(start, end);
-    const $mapped = ${mapper || '$0'};
+    const $mapped = ${mapper};
     return { kind: 'right', value: [ end, $mapped ] } as const;`;
 }
 function destructLitMacro(s) {
@@ -315,7 +324,8 @@ function destructLitMacro(s) {
         : undefined;
 }
 function compileRule(rule) {
-    const [_0, name, _1, type, ruleBody] = /^((?:\w+)?`\w+`|\w+)(:\s*(\w+))?\s*= *(.*)$/s.exec(rule);
+    const [_0, name, _1, type0, ruleBody] = /^((?:\w+)?`\w+`|\w+)(:\s*(\w+))?\s*= *(.*)$/s.exec(rule);
+    const type = type0 === 'infer' ? undefined : type0;
     const macro = destructLitMacro(name);
     const scope = macro
         ? { [macro.lit]: 'true' }
@@ -335,7 +345,7 @@ function compileRule(rule) {
     if (${tmp(idx)}.kind === 'right') {
         return ${tmp(idx)};
     }
-    if (${tmp(idx)}.kind === 'left' && !(${isLook(idx)})) {
+    if (${tmp(idx)}.kind === 'left' && ${hasConsumed(idx)}) {
         return ${tmp(idx)};
     }`);
         code = `
@@ -360,9 +370,17 @@ const prelude = `
 type $Either<L, R> = { readonly kind: 'left',  readonly value: L }
                    | { readonly kind: 'right', readonly value: R }
 
-type $NoMatch<T> = { readonly kind: 'no_match', readonly expected: T, readonly idx: number }
+type $NoMatch = { readonly expected: string | RegExp, readonly idx: number }
 
-type $Match<T> = $Either<$NoMatch<string | RegExp>, readonly [number, T]>
+type $Match<T> = $Either<$NoMatch, readonly [number, T]>
+
+export function $fail(expected: string, idx: number): $Match<never> {
+    return { kind: 'left', value: { expected, idx } } as const;
+}
+
+export function $success<T>(value: T, idx: number): $Match<T> {
+    return { kind: 'right', value: [idx, value] } as const;
+}
 
 export function getLineCol(offset: number, lineOffsetTable: [number, string][]): [number, number]|null {
     let idx = binarySearch(lineOffsetTable, x => x[0] < offset ? -1 :
@@ -418,7 +436,7 @@ function binarySearch<T>(arr: T[], compare: (x: T) => -1|0|1): false|number {
     return -low;
 }
 
-export function formatSimpleError(error: $NoMatch<string|RegExp>, lineOffsets: [number, string][], fileName?: string) {
+export function formatSimpleError(error: $NoMatch, lineOffsets: [number, string][], fileName?: string) {
     const [ lineNo, col ] = getLineCol(error.idx, lineOffsets)!;
     const line = lineOffsets[lineNo][1];
 
@@ -446,15 +464,15 @@ function compileGrammar(g, options) {
         .map(x => x[1].trim());
     const matchedRules = g
         .replaceAll(/%\{(.*?)\}%/gs, '') // remove the pasta
-        .replaceAll(/--.*/g, '') // remove comments
+        .replaceAll(/^#.*/mg, '') // remove comments
         .matchAll(/(((\w+)?`\w+`|\w+)(:\s*(\w+))?\s*=.+?)\s+;/gs);
     const left = g
         .replaceAll(/%\{(.*?)\}%/gs, '') // remove the pasta
-        .replaceAll(/--.*/g, '') // remove comments
+        .replaceAll(/^#.*/gm, '') // remove comments
         .replaceAll(/(((\w+)?`\w+`|\w+)(:\s*(\w+))?\s*=.+?)\s+;/gs, '') // remove the rules
         .trim();
     if (left) {
-        console.log('Cannot compile: \n\n' + left);
+        console.error('Cannot compile: \n\n' + left);
         process.exit(1);
     }
     const rules = [];
