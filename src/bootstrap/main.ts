@@ -32,8 +32,8 @@ function tmp(idx: number) {
     return '$tmp$' + idx;
 }
 
-function isLook(idx: number) {
-    return `${tmp(idx)}.value.kind === 'no_match' && ${tmp(idx)}.value.idx === end`
+function hasConsumed(idx: number) {
+    return `${tmp(idx)}.value.idx !== end`;
 }
 
 function cc(code: string, idx: number) {
@@ -49,7 +49,7 @@ function compileRx(pattern: string, idx: number) {
     const ${tmp(idx)} = /^${pattern.substr(1)}.exec(input.substring(end));
 
     if (!${tmp(idx)}) {
-        return { kind: 'left', value: { kind: 'no_match', expected: ${pattern}, idx: end } } as const;
+        return { kind: 'left', value: { expected: ${pattern}, idx: end } } as const;
     }
 
     const $${idx} = ${tmp(idx)}[0];
@@ -60,7 +60,7 @@ function compileLiteral(literal: string, idx: number) {
     return `
     const $${idx} = ${literal};
     if (!input.startsWith($${idx}, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $${idx}, idx: end } } as const;
+        return { kind: 'left', value: { expected: $${idx}, idx: end } } as const;
     }
 
     const $end${idx} = end += $${idx}.length;`
@@ -89,7 +89,7 @@ function compileRuleInvokation(rule: string, idx: number) {
 function compileAny(idx: number) {
     return `
     if (input.length === end) {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<any>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<any>', idx: end } } as const;
     }
     const $${idx} = input[end];
     const $end${idx} = end++;`;
@@ -102,10 +102,10 @@ function compileNot(pattern: string, scope: Scope, idx: number): string {
         return { kind: 'right', value: $${idx} } as const;
     };
     if ($cc${idx}(input, end, end).kind === 'right') {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<not>', idx: end } } as const;
     }
     if (input.length === end) {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<not>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<not>', idx: end } } as const;
     }
     const $${idx} = input[end];
     const $end${idx} = end++;`;
@@ -119,7 +119,7 @@ function compileLook(pattern: string, scope: Scope, idx: number): string {
     };
     const ${tmp(idx)} = $cc${idx}(input, end, end);
     if (${tmp(idx)}.kind === 'left') {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<look>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<look>', idx: end } } as const;
     }
     const $${idx} = ${tmp(idx)}.value[1];`;
 }
@@ -132,7 +132,7 @@ function compileTry(pattern: string, scope: Scope, idx: number): string {
     };
     const ${tmp(idx)} = $cc${idx}(input, end, end);
     if (${tmp(idx)}.kind === 'left') {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<try>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<try>', idx: end } } as const;
     }
     const [$end${idx}, $${idx}] = ${tmp(idx)}.value;
     end = $end${idx};`;
@@ -146,7 +146,7 @@ function compileBacktrack(pattern: string, scope: Scope, idx: number): string {
     };
     const ${tmp(idx)} = $cc${idx}(input.slice(0, end).split('').reverse().join(''), 0, 0);
     if (${tmp(idx)}.kind === 'left') {
-        return { kind: 'left', value: { kind: 'no_match', expected: '<backtrack>', idx: end } } as const;
+        return { kind: 'left', value: { expected: '<backtrack>', idx: end } } as const;
     }
     const [$end${idx}, $${idx}] = ${tmp(idx)}.value;
     end = end - $end${idx};`;
@@ -215,7 +215,7 @@ function compilePattern(pattern: string, scope: Scope, idx: number) {
     let $${idx};
     const ${tmp(idx)} = $cc${idx}(input, end);
     if (${tmp(idx)}.kind === 'left') {
-        if (!(${isLook(idx)})) {
+        if (${hasConsumed(idx)}) {
             return ${tmp(idx)};
         }
         $${idx} = undefined;
@@ -232,7 +232,7 @@ function compilePattern(pattern: string, scope: Scope, idx: number) {
     while (true) {
         const ${tmp(idx)} = $cc${idx}(input, end);
         if (${tmp(idx)}.kind === 'left') {
-            if (!(${isLook(idx)})) {
+            if (${hasConsumed(idx)}) {
                 return ${tmp(idx)};
             }
             break;
@@ -253,7 +253,7 @@ function compilePattern(pattern: string, scope: Scope, idx: number) {
     while (true) {
         const ${tmp(idx)} = $cc${idx}(input, end);
         if (${tmp(idx)}.kind === 'left') {
-            if (!(${isLook(idx)})) {
+            if (${hasConsumed(idx)}) {
                 return ${tmp(idx)};
             }
             break;
@@ -384,7 +384,7 @@ function compileRule(rule: string) {
     if (${tmp(idx)}.kind === 'right') {
         return ${tmp(idx)};
     }
-    if (${tmp(idx)}.kind === 'left' && !(${isLook(idx)})) {
+    if (${tmp(idx)}.kind === 'left' && ${hasConsumed(idx)}) {
         return ${tmp(idx)};
     }`);
 
@@ -413,12 +413,12 @@ const prelude = `
 type $Either<L, R> = { readonly kind: 'left',  readonly value: L }
                    | { readonly kind: 'right', readonly value: R }
 
-type $NoMatch<T> = { readonly kind: 'no_match', readonly expected: T, readonly idx: number }
+type $NoMatch = { readonly expected: string | RegExp, readonly idx: number }
 
-type $Match<T> = $Either<$NoMatch<string | RegExp>, readonly [number, T]>
+type $Match<T> = $Either<$NoMatch, readonly [number, T]>
 
 export function $fail(expected: string, idx: number): $Match<never> {
-    return { kind: 'left', value: { kind: 'no_match', expected, idx } } as const;
+    return { kind: 'left', value: { expected, idx } } as const;
 }
 
 export function $success<T>(value: T, idx: number): $Match<T> {
@@ -479,7 +479,7 @@ function binarySearch<T>(arr: T[], compare: (x: T) => -1|0|1): false|number {
     return -low;
 }
 
-export function formatSimpleError(error: $NoMatch<string|RegExp>, lineOffsets: [number, string][], fileName?: string) {
+export function formatSimpleError(error: $NoMatch, lineOffsets: [number, string][], fileName?: string) {
     const [ lineNo, col ] = getLineCol(error.idx, lineOffsets)!;
     const line = lineOffsets[lineNo][1];
 

@@ -113,7 +113,7 @@ function lit_macro<S extends string>(lit: S, input: string, start: number) {
     
     const $0 = lit;
     if (!input.startsWith($0, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
+        return { kind: 'left', value: { expected: $0, idx: end } } as const;
     }
 
     const $end0 = end += $0.length;
@@ -139,7 +139,7 @@ export function ws(input: string, start: number) {
     const $tmp$0 = /^(\s|#.*)*/.exec(input.substring(end));
 
     if (!$tmp$0) {
-        return { kind: 'left', value: { kind: 'no_match', expected: /(\s|#.*)*/, idx: end } } as const;
+        return { kind: 'left', value: { expected: /(\s|#.*)*/, idx: end } } as const;
     }
 
     const $0 = $tmp$0[0];
@@ -159,7 +159,7 @@ export function id(input: string, start: number) {
     const $tmp$0 = /^[_a-zA-Z][_a-zA-Z0-9]*/.exec(input.substring(end));
 
     if (!$tmp$0) {
-        return { kind: 'left', value: { kind: 'no_match', expected: /[_a-zA-Z][_a-zA-Z0-9]*/, idx: end } } as const;
+        return { kind: 'left', value: { expected: /[_a-zA-Z][_a-zA-Z0-9]*/, idx: end } } as const;
     }
 
     const $0 = $tmp$0[0];
@@ -186,7 +186,7 @@ export function literal(input: string, start: number) {
     const $tmp$0 = /^'(\\'|[^'])+?'/.exec(input.substring(end));
 
     if (!$tmp$0) {
-        return { kind: 'left', value: { kind: 'no_match', expected: /'(\\'|[^'])+?'/, idx: end } } as const;
+        return { kind: 'left', value: { expected: /'(\\'|[^'])+?'/, idx: end } } as const;
     }
 
     const $0 = $tmp$0[0];
@@ -213,7 +213,7 @@ export function templateBody(input: string, start: number) {
     const $tmp$0 = /^`(\\`|[^`])+?`/.exec(input.substring(end));
 
     if (!$tmp$0) {
-        return { kind: 'left', value: { kind: 'no_match', expected: /`(\\`|[^`])+?`/, idx: end } } as const;
+        return { kind: 'left', value: { expected: /`(\\`|[^`])+?`/, idx: end } } as const;
     }
 
     const $0 = $tmp$0[0];
@@ -271,7 +271,7 @@ export function template(input: string, start: number) {
     let $0;
     const $tmp$0 = $cc0(input, end);
     if ($tmp$0.kind === 'left') {
-        if (!($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+        if ($tmp$0.value.idx !== end) {
             return $tmp$0;
         }
         $0 = undefined;
@@ -304,7 +304,7 @@ export function rxModifier(input: string, start: number) {
         
         const $0 = 'i';
         if (!input.startsWith($0, end)) {
-            return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
+            return { kind: 'left', value: { expected: $0, idx: end } } as const;
         }
 
         const $end0 = end += $0.length;
@@ -317,7 +317,7 @@ export function rxModifier(input: string, start: number) {
     if ($tmp$0.kind === 'right') {
         return $tmp$0;
     }
-    if ($tmp$0.kind === 'left' && !($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+    if ($tmp$0.kind === 'left' && $tmp$0.value.idx !== end) {
         return $tmp$0;
     }
 
@@ -328,7 +328,7 @@ export function rxModifier(input: string, start: number) {
         
         const $0 = 's';
         if (!input.startsWith($0, end)) {
-            return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
+            return { kind: 'left', value: { expected: $0, idx: end } } as const;
         }
 
         const $end0 = end += $0.length;
@@ -341,7 +341,7 @@ export function rxModifier(input: string, start: number) {
     if ($tmp$1.kind === 'right') {
         return $tmp$1;
     }
-    if ($tmp$1.kind === 'left' && !($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+    if ($tmp$1.kind === 'left' && $tmp$1.value.idx !== end) {
         return $tmp$1;
     }
     return $tmp$1;
@@ -356,7 +356,7 @@ export function regex(input: string, start: number) {
     const $tmp$0 = /^\/(\\\/|[^\/])+?\//.exec(input.substring(end));
 
     if (!$tmp$0) {
-        return { kind: 'left', value: { kind: 'no_match', expected: /\/(\\\/|[^\/])+?\//, idx: end } } as const;
+        return { kind: 'left', value: { expected: /\/(\\\/|[^\/])+?\//, idx: end } } as const;
     }
 
     const $0 = $tmp$0[0];
@@ -377,7 +377,7 @@ export function regex(input: string, start: number) {
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
-            if (!($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+            if ($tmp$1.value.idx !== end) {
                 return $tmp$1;
             }
             break;
@@ -423,7 +423,7 @@ export function macroPattern(input: string, start: number) {
     if ($tmp$0.kind === 'right') {
         return $tmp$0;
     }
-    if ($tmp$0.kind === 'left' && !($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+    if ($tmp$0.kind === 'left' && $tmp$0.value.idx !== end) {
         return $tmp$0;
     }
 
@@ -447,7 +447,7 @@ export function macroPattern(input: string, start: number) {
     if ($tmp$1.kind === 'right') {
         return $tmp$1;
     }
-    if ($tmp$1.kind === 'left' && !($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+    if ($tmp$1.kind === 'left' && $tmp$1.value.idx !== end) {
         return $tmp$1;
     }
 
@@ -471,7 +471,7 @@ export function macroPattern(input: string, start: number) {
     if ($tmp$2.kind === 'right') {
         return $tmp$2;
     }
-    if ($tmp$2.kind === 'left' && !($tmp$2.value.kind === 'no_match' && $tmp$2.value.idx === end)) {
+    if ($tmp$2.kind === 'left' && $tmp$2.value.idx !== end) {
         return $tmp$2;
     }
 
@@ -492,7 +492,7 @@ export function macroPattern(input: string, start: number) {
         };
         const $tmp$0 = $cc0(input, end, end);
         if ($tmp$0.kind === 'left') {
-            return { kind: 'left', value: { kind: 'no_match', expected: '<try>', idx: end } } as const;
+            return { kind: 'left', value: { expected: '<try>', idx: end } } as const;
         }
         const [$end0, $0] = $tmp$0.value;
         end = $end0;
@@ -505,7 +505,7 @@ export function macroPattern(input: string, start: number) {
     if ($tmp$3.kind === 'right') {
         return $tmp$3;
     }
-    if ($tmp$3.kind === 'left' && !($tmp$3.value.kind === 'no_match' && $tmp$3.value.idx === end)) {
+    if ($tmp$3.kind === 'left' && $tmp$3.value.idx !== end) {
         return $tmp$3;
     }
 
@@ -529,7 +529,7 @@ export function macroPattern(input: string, start: number) {
     if ($tmp$4.kind === 'right') {
         return $tmp$4;
     }
-    if ($tmp$4.kind === 'left' && !($tmp$4.value.kind === 'no_match' && $tmp$4.value.idx === end)) {
+    if ($tmp$4.kind === 'left' && $tmp$4.value.idx !== end) {
         return $tmp$4;
     }
     return $tmp$4;
@@ -600,7 +600,7 @@ export function variable(input: string, start: number) {
     
     const $0 = '$';
     if (!input.startsWith($0, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
+        return { kind: 'left', value: { expected: $0, idx: end } } as const;
     }
 
     const $end0 = end += $0.length;
@@ -608,7 +608,7 @@ export function variable(input: string, start: number) {
     const $tmp$1 = /^\d+/.exec(input.substring(end));
 
     if (!$tmp$1) {
-        return { kind: 'left', value: { kind: 'no_match', expected: /\d+/, idx: end } } as const;
+        return { kind: 'left', value: { expected: /\d+/, idx: end } } as const;
     }
 
     const $1 = $tmp$1[0];
@@ -651,7 +651,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
     if ($tmp$0.kind === 'right') {
         return $tmp$0;
     }
-    if ($tmp$0.kind === 'left' && !($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+    if ($tmp$0.kind === 'left' && $tmp$0.value.idx !== end) {
         return $tmp$0;
     }
 
@@ -675,7 +675,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
     if ($tmp$1.kind === 'right') {
         return $tmp$1;
     }
-    if ($tmp$1.kind === 'left' && !($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+    if ($tmp$1.kind === 'left' && $tmp$1.value.idx !== end) {
         return $tmp$1;
     }
 
@@ -699,7 +699,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
     if ($tmp$2.kind === 'right') {
         return $tmp$2;
     }
-    if ($tmp$2.kind === 'left' && !($tmp$2.value.kind === 'no_match' && $tmp$2.value.idx === end)) {
+    if ($tmp$2.kind === 'left' && $tmp$2.value.idx !== end) {
         return $tmp$2;
     }
 
@@ -720,7 +720,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
         };
         const $tmp$0 = $cc0(input, end, end);
         if ($tmp$0.kind === 'left') {
-            return { kind: 'left', value: { kind: 'no_match', expected: '<try>', idx: end } } as const;
+            return { kind: 'left', value: { expected: '<try>', idx: end } } as const;
         }
         const [$end0, $0] = $tmp$0.value;
         end = $end0;
@@ -733,7 +733,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
     if ($tmp$3.kind === 'right') {
         return $tmp$3;
     }
-    if ($tmp$3.kind === 'left' && !($tmp$3.value.kind === 'no_match' && $tmp$3.value.idx === end)) {
+    if ($tmp$3.kind === 'left' && $tmp$3.value.idx !== end) {
         return $tmp$3;
     }
 
@@ -757,7 +757,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
     if ($tmp$4.kind === 'right') {
         return $tmp$4;
     }
-    if ($tmp$4.kind === 'left' && !($tmp$4.value.kind === 'no_match' && $tmp$4.value.idx === end)) {
+    if ($tmp$4.kind === 'left' && $tmp$4.value.idx !== end) {
         return $tmp$4;
     }
 
@@ -785,7 +785,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
                     
                     const $0 = '!';
                     if (!input.startsWith($0, end)) {
-                        return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
+                        return { kind: 'left', value: { expected: $0, idx: end } } as const;
                     }
 
                     const $end0 = end += $0.length;
@@ -794,7 +794,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
                 let $0;
                 const $tmp$0 = $cc0(input, end);
                 if ($tmp$0.kind === 'left') {
-                    if (!($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+                    if ($tmp$0.value.idx !== end) {
                         return $tmp$0;
                     }
                     $0 = undefined;
@@ -828,7 +828,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
         while (true) {
             const $tmp$1 = $cc1(input, end);
             if ($tmp$1.kind === 'left') {
-                if (!($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+                if ($tmp$1.value.idx !== end) {
                     return $tmp$1;
                 }
                 break;
@@ -852,7 +852,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
     if ($tmp$5.kind === 'right') {
         return $tmp$5;
     }
-    if ($tmp$5.kind === 'left' && !($tmp$5.value.kind === 'no_match' && $tmp$5.value.idx === end)) {
+    if ($tmp$5.kind === 'left' && $tmp$5.value.idx !== end) {
         return $tmp$5;
     }
 
@@ -882,7 +882,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
         let $1;
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
-            if (!($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+            if ($tmp$1.value.idx !== end) {
                 return $tmp$1;
             }
             $1 = undefined;
@@ -899,7 +899,7 @@ export function simplePattern(input: string, start: number): $Match<SimplePatter
     if ($tmp$6.kind === 'right') {
         return $tmp$6;
     }
-    if ($tmp$6.kind === 'left' && !($tmp$6.value.kind === 'no_match' && $tmp$6.value.idx === end)) {
+    if ($tmp$6.kind === 'left' && $tmp$6.value.idx !== end) {
         return $tmp$6;
     }
     return $tmp$6;
@@ -930,7 +930,7 @@ export function repModifier(input: string, start: number) {
     if ($tmp$0.kind === 'right') {
         return $tmp$0;
     }
-    if ($tmp$0.kind === 'left' && !($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+    if ($tmp$0.kind === 'left' && $tmp$0.value.idx !== end) {
         return $tmp$0;
     }
 
@@ -954,7 +954,7 @@ export function repModifier(input: string, start: number) {
     if ($tmp$1.kind === 'right') {
         return $tmp$1;
     }
-    if ($tmp$1.kind === 'left' && !($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+    if ($tmp$1.kind === 'left' && $tmp$1.value.idx !== end) {
         return $tmp$1;
     }
 
@@ -978,7 +978,7 @@ export function repModifier(input: string, start: number) {
     if ($tmp$2.kind === 'right') {
         return $tmp$2;
     }
-    if ($tmp$2.kind === 'left' && !($tmp$2.value.kind === 'no_match' && $tmp$2.value.idx === end)) {
+    if ($tmp$2.kind === 'left' && $tmp$2.value.idx !== end) {
         return $tmp$2;
     }
     return $tmp$2;
@@ -1011,7 +1011,7 @@ export function rep(input: string, start: number) {
     let $1;
     const $tmp$1 = $cc1(input, end);
     if ($tmp$1.kind === 'left') {
-        if (!($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+        if ($tmp$1.value.idx !== end) {
             return $tmp$1;
         }
         $1 = undefined;
@@ -1034,7 +1034,7 @@ export function mapperText(input: string, start: number) {
     const $tmp$0 = /^[^\n]+?\n/.exec(input.substring(end));
 
     if (!$tmp$0) {
-        return { kind: 'left', value: { kind: 'no_match', expected: /[^\n]+?\n/, idx: end } } as const;
+        return { kind: 'left', value: { expected: /[^\n]+?\n/, idx: end } } as const;
     }
 
     const $0 = $tmp$0[0];
@@ -1060,7 +1060,7 @@ export function mapper(input: string, start: number) {
             
             const $0 = '\%\%';
             if (!input.startsWith($0, end)) {
-                return { kind: 'left', value: { kind: 'no_match', expected: $0, idx: end } } as const;
+                return { kind: 'left', value: { expected: $0, idx: end } } as const;
             }
 
             const $end0 = end += $0.length;
@@ -1093,7 +1093,7 @@ export function mapper(input: string, start: number) {
     while (true) {
         const $tmp$0 = $cc0(input, end);
         if ($tmp$0.kind === 'left') {
-            if (!($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+            if ($tmp$0.value.idx !== end) {
                 return $tmp$0;
             }
             break;
@@ -1134,7 +1134,7 @@ export function alternative(input: string, start: number) {
     while (true) {
         const $tmp$0 = $cc0(input, end);
         if ($tmp$0.kind === 'left') {
-            if (!($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+            if ($tmp$0.value.idx !== end) {
                 return $tmp$0;
             }
             break;
@@ -1157,7 +1157,7 @@ export function alternative(input: string, start: number) {
     let $1;
     const $tmp$1 = $cc1(input, end);
     if ($tmp$1.kind === 'left') {
-        if (!($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+        if ($tmp$1.value.idx !== end) {
             return $tmp$1;
         }
         $1 = undefined;
@@ -1226,7 +1226,7 @@ export function alternatives(input: string, start: number) {
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
-            if (!($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+            if ($tmp$1.value.idx !== end) {
                 return $tmp$1;
             }
             break;
@@ -1285,7 +1285,7 @@ export function templateDef(input: string, start: number) {
     let $0;
     const $tmp$0 = $cc0(input, end);
     if ($tmp$0.kind === 'left') {
-        if (!($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+        if ($tmp$0.value.idx !== end) {
             return $tmp$0;
         }
         $0 = undefined;
@@ -1296,7 +1296,7 @@ export function templateDef(input: string, start: number) {
 
     const $1 = '`';
     if (!input.startsWith($1, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $1, idx: end } } as const;
+        return { kind: 'left', value: { expected: $1, idx: end } } as const;
     }
 
     const $end1 = end += $1.length;
@@ -1310,7 +1310,7 @@ export function templateDef(input: string, start: number) {
 
     const $3 = '`';
     if (!input.startsWith($3, end)) {
-        return { kind: 'left', value: { kind: 'no_match', expected: $3, idx: end } } as const;
+        return { kind: 'left', value: { expected: $3, idx: end } } as const;
     }
 
     const $end3 = end += $3.length;
@@ -1349,7 +1349,7 @@ export function rule(input: string, start: number) {
         };
         const $tmp$0 = $cc0(input, end, end);
         if ($tmp$0.kind === 'left') {
-            return { kind: 'left', value: { kind: 'no_match', expected: '<try>', idx: end } } as const;
+            return { kind: 'left', value: { expected: '<try>', idx: end } } as const;
         }
         const [$end0, $0] = $tmp$0.value;
         end = $end0;
@@ -1368,7 +1368,7 @@ export function rule(input: string, start: number) {
         let $1;
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
-            if (!($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+            if ($tmp$1.value.idx !== end) {
                 return $tmp$1;
             }
             $1 = undefined;
@@ -1406,7 +1406,7 @@ export function rule(input: string, start: number) {
     if ($tmp$0.kind === 'right') {
         return $tmp$0;
     }
-    if ($tmp$0.kind === 'left' && !($tmp$0.value.kind === 'no_match' && $tmp$0.value.idx === end)) {
+    if ($tmp$0.kind === 'left' && $tmp$0.value.idx !== end) {
         return $tmp$0;
     }
 
@@ -1436,7 +1436,7 @@ export function rule(input: string, start: number) {
         let $1;
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
-            if (!($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+            if ($tmp$1.value.idx !== end) {
                 return $tmp$1;
             }
             $1 = undefined;
@@ -1474,7 +1474,7 @@ export function rule(input: string, start: number) {
     if ($tmp$1.kind === 'right') {
         return $tmp$1;
     }
-    if ($tmp$1.kind === 'left' && !($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+    if ($tmp$1.kind === 'left' && $tmp$1.value.idx !== end) {
         return $tmp$1;
     }
     return $tmp$1;
@@ -1489,7 +1489,7 @@ export function pasta(input: string, start: number) {
     const $tmp$0 = /^%\{.+?}%/s.exec(input.substring(end));
 
     if (!$tmp$0) {
-        return { kind: 'left', value: { kind: 'no_match', expected: /%\{.+?}%/s, idx: end } } as const;
+        return { kind: 'left', value: { expected: /%\{.+?}%/s, idx: end } } as const;
     }
 
     const $0 = $tmp$0[0];
@@ -1516,7 +1516,7 @@ export function eof(input: string, start: number) {
     const $tmp$0 = /^$/.exec(input.substring(end));
 
     if (!$tmp$0) {
-        return { kind: 'left', value: { kind: 'no_match', expected: /$/, idx: end } } as const;
+        return { kind: 'left', value: { expected: /$/, idx: end } } as const;
     }
 
     const $0 = $tmp$0[0];
@@ -1555,7 +1555,7 @@ export function grammar(input: string, start: number) {
     while (true) {
         const $tmp$1 = $cc1(input, end);
         if ($tmp$1.kind === 'left') {
-            if (!($tmp$1.value.kind === 'no_match' && $tmp$1.value.idx === end)) {
+            if ($tmp$1.value.idx !== end) {
                 return $tmp$1;
             }
             break;
@@ -1579,7 +1579,7 @@ export function grammar(input: string, start: number) {
     while (true) {
         const $tmp$2 = $cc2(input, end);
         if ($tmp$2.kind === 'left') {
-            if (!($tmp$2.value.kind === 'no_match' && $tmp$2.value.idx === end)) {
+            if ($tmp$2.value.idx !== end) {
                 return $tmp$2;
             }
             break;
@@ -1611,12 +1611,12 @@ export function grammar(input: string, start: number) {
 type $Either<L, R> = { readonly kind: 'left',  readonly value: L }
                    | { readonly kind: 'right', readonly value: R }
 
-type $NoMatch<T> = { readonly kind: 'no_match', readonly expected: T, readonly idx: number }
+type $NoMatch = { readonly expected: string | RegExp, readonly idx: number }
 
-type $Match<T> = $Either<$NoMatch<string | RegExp>, readonly [number, T]>
+type $Match<T> = $Either<$NoMatch, readonly [number, T]>
 
 export function $fail(expected: string, idx: number): $Match<never> {
-    return { kind: 'left', value: { kind: 'no_match', expected, idx } } as const;
+    return { kind: 'left', value: { expected, idx } } as const;
 }
 
 export function $success<T>(value: T, idx: number): $Match<T> {
@@ -1677,7 +1677,7 @@ function binarySearch<T>(arr: T[], compare: (x: T) => -1|0|1): false|number {
     return -low;
 }
 
-export function formatSimpleError(error: $NoMatch<string|RegExp>, lineOffsets: [number, string][], fileName?: string) {
+export function formatSimpleError(error: $NoMatch, lineOffsets: [number, string][], fileName?: string) {
     const [ lineNo, col ] = getLineCol(error.idx, lineOffsets)!;
     const line = lineOffsets[lineNo][1];
 
